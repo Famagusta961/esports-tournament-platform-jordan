@@ -37,7 +37,7 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/wallet" element={<Wallet />} />
           
-          {/* Admin Routes */}
+          {/* Admin Routes - Public Access for Debug */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminIndex />} />
             <Route path="tournaments" element={<AdminTournaments />} />
