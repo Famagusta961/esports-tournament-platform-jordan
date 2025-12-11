@@ -6,7 +6,7 @@
 **admin@arenajo.com**
 
 ### Password
-**Admin123!@#**
+**ArenaJo2024!AdminSecure#Pass**
 
 ### Role
 **Administrator**
@@ -21,7 +21,7 @@
 
 1. Go to: https://www.arenajo.com/login
 2. Enter email: admin@arenajo.com
-3. Enter password: Admin123!@#
+3. Enter password: ArenaJo2024!AdminSecure#Pass
 4. Click "Sign In"
 
 ## Admin Panel Access
