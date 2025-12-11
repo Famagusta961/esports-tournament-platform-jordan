@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminDebugPanel from '@/components/AdminDebugPanel';
 import AuthDebugPanel from '@/components/AuthDebugPanel';
+import AdminFixDebugPanel from '@/components/AdminFixDebugPanel';
 import auth from '@/lib/shared/kliv-auth.js';
 import { useToast } from '@/hooks/use-toast';
 
@@ -69,6 +70,7 @@ const AdminLayout = () => {
   return (
     <ProtectedRoute requireAuth={true} requireAdmin={true}>
       {/* TEMPORARY DEBUG PANELS - REMOVE IN PRODUCTION */}
+      <AdminFixDebugPanel />
       <AuthDebugPanel />
       <AdminDebugPanel />
       

@@ -67,6 +67,7 @@ const ProtectedRoute = ({
             
             // Check database for admin role - this is the authoritative source
             // First query by email only to see what's in the database
+            console.log('🔍 [DB Query] Searching for user with email:', user.email);
             const { data: users } = await db.query('users', {
               email: 'eq.' + user.email
             });

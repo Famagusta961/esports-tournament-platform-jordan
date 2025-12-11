@@ -29,11 +29,14 @@ const AdminDebugPanel = () => {
         
         let dbUser = null;
         if (user) {
+          console.log('🔍 [AdminDebug] Querying database for user:', user.email);
           const { data: users } = await db.query('users', {
             email: 'eq.' + user.email
           });
-          console.log('DB users for', user.email, ':', users);
+          console.log('📊 [AdminDebug] DB query result:', users);
+          console.log('📊 [AdminDebug] DB query result count:', users?.length || 0);
           dbUser = users?.[0];
+          console.log('📊 [AdminDebug] Extracted DB user:', dbUser);
         }
         
         setDebugInfo({

@@ -40,6 +40,7 @@ const AuthDebugPanel = () => {
     setIsRefreshing(true);
     try {
       console.log('🔍 [AuthDebug] Checking auth status...');
+      console.log('🍪 [AuthDebug] Current cookies:', document.cookie);
       
       // Get session cookie
       const cookies = document.cookie.split(';').reduce((acc, cookie) => {
@@ -49,9 +50,12 @@ const AuthDebugPanel = () => {
       }, {} as Record<string, string>);
 
       const sessionCookie = cookies['session'] || 'Not found';
+      console.log('🔍 [AuthDebug] Session cookie found:', sessionCookie === 'Not found' ? 'No' : 'Yes');
 
       // Check auth user
+      console.log('👤 [AuthDebug] Calling auth.getUser(true)...');
       const user = await auth.getUser(true); // Force refresh
+      console.log('👤 [AuthDebug] Auth user result:', user);
       
       setDebugInfo({
         isSignedIn: !!user,
@@ -65,7 +69,8 @@ const AuthDebugPanel = () => {
         isSignedIn: !!user, 
         userEmail: user?.email,
         userId: user?.id,
-        sessionCookie: sessionCookie ? 'Present' : 'Missing'
+        sessionCookie: sessionCookie ? 'Present' : 'Missing',
+        sessionCookieValue: sessionCookie === 'Not found' ? 'None' : `${sessionCookie.substring(0, 20)}...`
       });
     } catch (error) {
       console.error('❌ [AuthDebug] Auth check failed:', error);
@@ -82,9 +87,15 @@ const AuthDebugPanel = () => {
   const testSessionCall = async () => {
     try {
       console.log('🧪 [AuthDebug] Testing /api/v2/auth/user call...');
+      console.log('🍪 [AuthDebug] Request cookies:', document.cookie);
+      
       const response = await fetch('/api/v2/auth/user', {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
       });
       
       console.log('📡 [AuthDebug] Session API response:', {
