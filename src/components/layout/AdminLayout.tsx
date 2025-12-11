@@ -66,7 +66,7 @@ const AdminLayout = () => {
   const isActiveRoute = (path: string) => location.pathname === path;
 
   return (
-    <ProtectedRoute requireAuth={false} requireAdmin={false}>
+    <ProtectedRoute requireAuth={true} requireAdmin={true}>
       {/* TEMPORARY DEBUG PANEL - REMOVE IN PRODUCTION */}
       <AdminDebugPanel />
       

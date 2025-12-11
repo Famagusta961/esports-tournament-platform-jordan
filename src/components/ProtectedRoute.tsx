@@ -54,16 +54,20 @@ const ProtectedRoute = ({
             }
             
             // Check database for admin role - this is the authoritative source
+            // First query by email only to see what's in the database
             const { data: users } = await db.query('users', {
-              email: 'eq.' + user.email,
-              role: 'eq.admin'
+              email: 'eq.' + user.email
             });
 
-            console.log('Admin query result for', user.email, ':', users);
+            console.log('DB users for', user.email, ':', users);
             console.log('Query result length:', users?.length || 0);
             
             const adminUser = users?.[0];
-            const isAdminByDB = !!adminUser;
+            const isAdminByDB = adminUser?.role === 'admin';
+            
+            console.log('User record:', adminUser);
+            console.log('User role:', adminUser?.role);
+            console.log('isAdminByDB:', isAdminByDB);
             
             console.log('isAdminByDB:', isAdminByDB);
             console.log('adminUser:', adminUser);
