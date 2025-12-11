@@ -73,51 +73,52 @@ const EditTournament = () => {
     
     setIsLoading(true);
     try {
-      // Simulate API call - replace with real API call
-      const mockTournament: Tournament = {
-        _row_id: parseInt(id),
-        title: 'ArenaJo Championship 2024',
-        description: 'Annual esports championship for Jordan',
-        rules: 'Standard tournament rules apply',
-        format_type: 'single_elimination',
-        match_format: '1v1',
-        platform: 'PC',
-        entry_fee: 25.00,
-        prize_pool: 1000.00,
-        max_players: 64,
-        current_players: 32,
-        start_date: '2024-12-25',
-        start_time: '18:00',
-        registration_deadline: '2024-12-24',
-        status: 'registration',
-        game_slug: 'valorant',
-        game_name: 'Valorant'
-      };
+      // Use actual tournament API
+      const result = await tournamentService.getById(parseInt(id));
       
-      setTournament(mockTournament);
-      setFormData({
-        title: mockTournament.title,
-        game_slug: mockTournament.game_slug || '',
-        description: mockTournament.description || '',
-        rules: mockTournament.rules || '',
-        format_type: mockTournament.format_type || 'single_elimination',
-        match_format: mockTournament.match_format || '1v1',
-        platform: mockTournament.platform || 'PC',
-        entry_fee: mockTournament.entry_fee,
-        prize_pool: mockTournament.prize_pool,
-        max_players: mockTournament.max_players,
-        start_date: mockTournament.start_date,
-        start_time: mockTournament.start_time,
-        registration_deadline: mockTournament.registration_deadline || '',
-        status: mockTournament.status
-      });
+      if (result && result.success && result.tournament) {
+        const tournamentData = result.tournament;
+        setTournament(tournamentData);
+        
+        // Extract game slug from game_name or use a default
+        let gameSlug = '';
+        if (tournamentData.game_slug) {
+          gameSlug = tournamentData.game_slug;
+        } else if (tournamentData.game_name) {
+          // Try to find game by name and get slug
+          const games = await gameService.list();
+          const game = games.find(g => g.name.toLowerCase() === tournamentData.game_name?.toLowerCase());
+          gameSlug = game?.slug || '';
+        }
+        
+        setFormData({
+          title: tournamentData.title || '',
+          game_slug: gameSlug,
+          description: tournamentData.description || '',
+          rules: tournamentData.rules || '',
+          format_type: tournamentData.format_type || 'single_elimination',
+          match_format: tournamentData.match_format || '1v1',
+          platform: tournamentData.platform || 'PC',
+          entry_fee: tournamentData.entry_fee || 0,
+          prize_pool: tournamentData.prize_pool || 0,
+          max_players: tournamentData.max_players || 16,
+          start_date: tournamentData.start_date || '',
+          start_time: tournamentData.start_time || '18:00',
+          registration_deadline: tournamentData.registration_deadline || '',
+          status: tournamentData.status || 'draft'
+        });
+      } else {
+        throw new Error(result?.error || 'Tournament not found');
+      }
     } catch (error) {
       console.error('Failed to load tournament:', error);
       toast({
         title: "Error",
-        description: "Failed to load tournament details",
+        description: error instanceof Error ? error.message : "Failed to load tournament details",
         variant: "destructive"
       });
+      // Navigate back on error
+      navigate('/admin/tournaments');
     } finally {
       setIsLoading(false);
     }
@@ -149,17 +150,53 @@ const EditTournament = () => {
       return;
     }
 
+    if (formData.entry_fee < 0 || formData.prize_pool < 0) {
+      toast({
+        title: "Validation Error", 
+        description: "Fee and prize amounts must be positive",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.max_players < 2 || formData.max_players > 10000) {
+      toast({
+        title: "Validation Error",
+        description: "Player count must be between 2 and 10,000",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSaving(true);
     
     try {
-      // Simulate API call - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: "Tournament Updated!",
-        description: "Tournament has been successfully updated",
+      const result = await tournamentService.update(parseInt(id!), {
+        title: formData.title,
+        description: formData.description,
+        rules: formData.rules,
+        format_type: formData.format_type,
+        match_format: formData.match_format,
+        platform: formData.platform,
+        entry_fee: formData.entry_fee,
+        prize_pool: formData.prize_pool,
+        max_players: formData.max_players,
+        start_date: formData.start_date,
+        start_time: formData.start_time,
+        registration_deadline: formData.registration_deadline,
+        status: formData.status,
+        game_slug: formData.game_slug
       });
-      navigate('/admin/tournaments');
+      
+      if (result && result.success) {
+        toast({
+          title: "Tournament Updated!",
+          description: "Tournament has been successfully updated",
+        });
+        navigate('/admin/tournaments');
+      } else {
+        throw new Error(result?.error || 'Failed to update tournament');
+      }
     } catch (error) {
       console.error('Update tournament error:', error);
       toast({
@@ -173,26 +210,35 @@ const EditTournament = () => {
   };
 
   const handleDelete = async () => {
+    if (!id) return;
+    
     if (!confirm('Are you sure you want to delete this tournament? This action cannot be undone.')) {
       return;
     }
 
+    setIsSaving(true);
+    
     try {
-      // Simulate API call - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const result = await tournamentService.delete(parseInt(id));
       
-      toast({
-        title: "Tournament Deleted",
-        description: "Tournament has been successfully deleted",
-      });
-      navigate('/admin/tournaments');
+      if (result && result.success) {
+        toast({
+          title: "Tournament Deleted",
+          description: result.message || "Tournament has been successfully deleted",
+        });
+        navigate('/admin/tournaments');
+      } else {
+        throw new Error(result?.error || 'Failed to delete tournament');
+      }
     } catch (error) {
       console.error('Delete tournament error:', error);
       toast({
         title: "Delete Failed",
-        description: "Failed to delete tournament",
+        description: error instanceof Error ? error.message : "Failed to delete tournament",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 

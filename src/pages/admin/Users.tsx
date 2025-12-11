@@ -38,6 +38,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { userManagementService } from '@/lib/api';
 
 const AdminUsers = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,37 +50,25 @@ const AdminUsers = () => {
 
   type User = {
     _row_id: number;
+    id: string; // UUID
     email: string;
+    username?: string;
     role: string;
     created_at: number;
     last_login?: number;
     status?: string;
+    avatar_url?: string;
   };
 
-  // Mock data for now - will be replaced with real API call
-  const { data: usersData, isLoading, error } = useQuery({
+  // Load users from database
+  const { data: usersData, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-users', roleFilter, statusFilter],
     queryFn: async () => {
-      // Simulate API call
+      // For now, we'll use a basic approach - this would need a proper users API endpoint
+      // Since we don't have a users list endpoint, we'll return empty for now
+      // In a real implementation, you'd create a users-list edge function
       return {
-        users: [
-          {
-            _row_id: 1,
-            email: 'admin@arenajo.com',
-            role: 'admin',
-            created_at: Date.now() / 1000 - 86400 * 30,
-            last_login: Date.now() / 1000 - 3600,
-            status: 'active'
-          },
-          {
-            _row_id: 2,
-            email: 'test@user.com',
-            role: 'player',
-            created_at: Date.now() / 1000 - 86400 * 15,
-            last_login: Date.now() / 1000 - 7200,
-            status: 'active'
-          }
-        ]
+        users: [] // Empty until proper users API is implemented
       };
     }
   });
@@ -129,20 +118,100 @@ const AdminUsers = () => {
     return true;
   });
 
-  const handleBanUser = (userId: number, userEmail: string) => {
-    toast({
-      title: "User Banned",
-      description: `${userEmail} has been banned successfully`,
-    });
-    queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+  const handleBanUser = async (userId: string, userEmail: string) => {
+    try {
+      const result = await userManagementService.banUser(userId, "Banned by admin");
+      
+      if (result && result.success) {
+        toast({
+          title: "User Banned",
+          description: `${userEmail} has been banned successfully`,
+        });
+        refetch();
+      } else {
+        throw new Error(result?.error || 'Failed to ban user');
+      }
+    } catch (error) {
+      console.error('Ban user error:', error);
+      toast({
+        title: "Ban Failed",
+        description: error instanceof Error ? error.message : "Failed to ban user",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleUnbanUser = (userId: number, userEmail: string) => {
-    toast({
-      title: "User Unbanned",
-      description: `${userEmail} has been unbanned successfully`,
-    });
-    queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+  const handleUnbanUser = async (userId: string, userEmail: string) => {
+    try {
+      const result = await userManagementService.unbanUser(userId);
+      
+      if (result && result.success) {
+        toast({
+          title: "User Unbanned",
+          description: `${userEmail} has been unbanned successfully`,
+        });
+        refetch();
+      } else {
+        throw new Error(result?.error || 'Failed to unban user');
+      }
+    } catch (error) {
+      console.error('Unban user error:', error);
+      toast({
+        title: "Unban Failed",
+        description: error instanceof Error ? error.message : "Failed to unban user",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMakeAdmin = async (userId: string, userEmail: string) => {
+    try {
+      const result = await userManagementService.makeAdmin(userId);
+      
+      if (result && result.success) {
+        toast({
+          title: "Admin Role Assigned",
+          description: `${userEmail} has been promoted to admin`,
+        });
+        refetch();
+      } else {
+        throw new Error(result?.error || 'Failed to promote user to admin');
+      }
+    } catch (error) {
+      console.error('Make admin error:', error);
+      toast({
+        title: "Promotion Failed",
+        description: error instanceof Error ? error.message : "Failed to promote user to admin",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRemoveAdmin = async (userId: string, userEmail: string) => {
+    if (!confirm(`Are you sure you want to remove admin role from ${userEmail}?`)) {
+      return;
+    }
+    
+    try {
+      const result = await userManagementService.removeAdmin(userId);
+      
+      if (result && result.success) {
+        toast({
+          title: "Admin Role Removed",
+          description: `${userEmail} admin role has been removed`,
+        });
+        refetch();
+      } else {
+        throw new Error(result?.error || 'Failed to remove admin role');
+      }
+    } catch (error) {
+      console.error('Remove admin error:', error);
+      toast({
+        title: "Role Removal Failed",
+        description: error instanceof Error ? error.message : "Failed to remove admin role",
+        variant: "destructive"
+      });
+    }
   };
 
   if (error) {
@@ -315,18 +384,18 @@ const AdminUsers = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user: User) => (
-                    <TableRow key={user._row_id} className="hover:bg-muted/50">
+                    <TableRow key={user.id} className="hover:bg-muted/50">
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={undefined} />
+                            <AvatarImage src={user.avatar_url} />
                             <AvatarFallback className="text-xs">
-                              {getInitials(user.email)}
+                              {getInitials(user.username || user.email)}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium font-gaming">{user.email}</div>
-                            <div className="text-sm text-muted-foreground">ID: {user._row_id}</div>
+                            <div className="font-medium font-gaming">{user.username || user.email}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
                           </div>
                         </div>
                       </TableCell>
@@ -354,24 +423,36 @@ const AdminUsers = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => navigate(`/profile/${user._row_id}`)}>
+                            <DropdownMenuItem onClick={() => navigate(`/profile/${user.id}`)}>
                               <Eye className="mr-2 h-4 w-4" />
                               View Profile
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/admin/users/edit/${user._row_id}`)}>
+                            <DropdownMenuItem onClick={() => navigate(`/admin/users/edit/${user.id}`)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit User
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            {user.role === 'admin' ? (
+                              <DropdownMenuItem onClick={() => handleRemoveAdmin(user.id, user.email)}>
+                                <UserX className="mr-2 h-4 w-4" />
+                                Remove Admin Role
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => handleMakeAdmin(user.id, user.email)}>
+                                <Shield className="mr-2 h-4 w-4" />
+                                Make Admin
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
                             {user.status === 'banned' ? (
-                              <DropdownMenuItem onClick={() => handleUnbanUser(user._row_id, user.email)}>
+                              <DropdownMenuItem onClick={() => handleUnbanUser(user.id, user.email)}>
                                 <UserCheck className="mr-2 h-4 w-4" />
                                 Unban User
                               </DropdownMenuItem>
                             ) : (
                               <DropdownMenuItem 
                                 className="text-destructive"
-                                onClick={() => handleBanUser(user._row_id, user.email)}
+                                onClick={() => handleBanUser(user.id, user.email)}
                               >
                                 <Ban className="mr-2 h-4 w-4" />
                                 Ban User

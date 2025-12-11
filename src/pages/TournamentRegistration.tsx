@@ -47,35 +47,23 @@ const TournamentRegistration = () => {
     if (!id) return;
     
     try {
-      // Simulate API call - replace with real API call
-      const mockTournament: Tournament = {
-        _row_id: parseInt(id),
-        title: 'ArenaJo Championship 2024',
-        description: 'Annual esports championship for Jordan with top prize pool',
-        rules: 'Standard tournament rules apply. No cheating, no exploits. Sportsmanship required.',
-        format_type: 'single_elimination',
-        match_format: '1v1',
-        platform: 'PC',
-        entry_fee: 25.00,
-        prize_pool: 1000.00,
-        max_players: 64,
-        current_players: 45,
-        start_date: '2024-12-25',
-        start_time: '18:00',
-        registration_deadline: '2024-12-24',
-        status: 'registration',
-        game_slug: 'valorant',
-        game_name: 'Valorant'
-      };
+      // Use actual tournament API
+      const result = await tournamentService.getById(parseInt(id));
       
-      setTournament(mockTournament);
+      if (result && result.success && result.tournament) {
+        setTournament(result.tournament);
+      } else {
+        throw new Error(result?.error || 'Tournament not found');
+      }
     } catch (error) {
       console.error('Failed to load tournament:', error);
       toast({
         title: "Error",
-        description: "Failed to load tournament details",
+        description: error instanceof Error ? error.message : "Failed to load tournament details",
         variant: "destructive"
       });
+      // Navigate back to tournaments list on error
+      navigate('/tournaments');
     } finally {
       setIsLoading(false);
     }
@@ -106,15 +94,22 @@ const TournamentRegistration = () => {
     setIsRegistering(true);
     
     try {
-      // Simulate API call - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Use actual tournament join API
+      const result = await tournamentService.join(tournament._row_id);
       
-      toast({
-        title: "Registration Successful!",
-        description: `You have been registered for ${tournament.title}`,
-      });
-      
-      navigate(`/tournaments/${tournament._row_id}`);
+      if (result && result.success) {
+        toast({
+          title: result.alreadyRegistered ? "Already Registered" : "Registration Successful!",
+          description: result.message || `You have been registered for ${tournament.title}`,
+        });
+        
+        // Navigate to tournament details with a slight delay to show success message
+        setTimeout(() => {
+          navigate(`/tournaments/${tournament._row_id}`);
+        }, 1500);
+      } else {
+        throw new Error(result?.error || 'Failed to register for tournament');
+      }
     } catch (error) {
       console.error('Registration error:', error);
       toast({

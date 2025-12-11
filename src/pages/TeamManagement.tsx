@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
 import auth from '@/lib/shared/kliv-auth.js';
+import { teamService } from '@/lib/api';
 
 type Team = {
   _row_id: number;
@@ -78,55 +79,13 @@ const TeamManagement = () => {
   const loadTeams = async () => {
     setIsLoading(true);
     try {
-      // Simulate API calls - replace with real API calls
-      const mockTeams: Team[] = [
-        {
-          _row_id: 1,
-          name: 'Jordan Elite',
-          tag: 'JDE',
-          description: 'Top esports team from Jordan',
-          captain_id: '1',
-          captain_username: 'captain_jo',
-          logo_url: '',
-          created_at: Date.now() / 1000 - 86400 * 30,
-          member_count: 5,
-          status: 'active',
-          game_name: 'Valorant'
-        },
-        {
-          _row_id: 2,
-          name: 'Arena Warriors',
-          tag: 'AWR',
-          description: 'Competitive gaming squad',
-          captain_id: '2',
-          captain_username: 'warrior_123',
-          logo_url: '',
-          created_at: Date.now() / 1000 - 86400 * 15,
-          member_count: 3,
-          status: 'active',
-          game_name: 'PUBG Mobile'
-        }
-      ];
-
-      // Mock user teams
-      const mockMyTeams: Team[] = [
-        {
-          _row_id: 3,
-          name: 'My Gaming Squad',
-          tag: 'MGS',
-          description: 'My personal team',
-          captain_id: user?.id || '3',
-          captain_username: user?.username || 'my_username',
-          logo_url: '',
-          created_at: Date.now() / 1000 - 86400 * 7,
-          member_count: 2,
-          status: 'active',
-          game_name: 'FIFA'
-        }
-      ];
-
-      setTeams(mockTeams);
-      setMyTeams(mockMyTeams);
+      // Load user's teams using actual API
+      const myTeamsData = await teamService.getUserTeams();
+      setMyTeams(myTeamsData || []);
+      
+      // For now, set all teams to empty since we don't have a public teams API
+      // This could be implemented later
+      setTeams([]);
     } catch (error) {
       console.error('Failed to load teams:', error);
       toast({
@@ -141,33 +100,16 @@ const TeamManagement = () => {
 
   const loadTeamMembers = async (teamId: number) => {
     try {
-      // Simulate API call - replace with real API call
+      // For now, we'll keep this as a placeholder since we don't have a specific team members API
+      // In a real implementation, you'd fetch team members from the database
       const mockMembers: TeamMember[] = [
         {
           _row_id: 1,
           team_id: teamId,
           user_id: '1',
-          username: 'captain_jo',
+          username: user?.username || 'captain',
           role: 'captain',
           joined_at: Date.now() / 1000 - 86400 * 30,
-          status: 'active'
-        },
-        {
-          _row_id: 2,
-          team_id: teamId,
-          user_id: '2',
-          username: 'player2',
-          role: 'member',
-          joined_at: Date.now() / 1000 - 86400 * 25,
-          status: 'active'
-        },
-        {
-          _row_id: 3,
-          team_id: teamId,
-          user_id: '3',
-          username: 'player3',
-          role: 'member',
-          joined_at: Date.now() / 1000 - 86400 * 20,
           status: 'active'
         }
       ];
@@ -200,77 +142,99 @@ const TeamManagement = () => {
     }
 
     try {
-      // Simulate API call - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: "Team Created!",
-        description: `${createFormData.name} has been successfully created`,
+      const result = await teamService.create({
+        name: createFormData.name,
+        description: createFormData.description,
+        tag: createFormData.tag
       });
       
-      setShowCreateForm(false);
-      setCreateFormData({ name: '', tag: '', description: '', game: '' });
-      loadTeams();
+      if (result && result.success) {
+        toast({
+          title: "Team Created!",
+          description: `${createFormData.name} has been successfully created`,
+        });
+        
+        setShowCreateForm(false);
+        setCreateFormData({ name: '', tag: '', description: '', game: '' });
+        loadTeams();
+      } else {
+        throw new Error(result?.error || 'Failed to create team');
+      }
     } catch (error) {
       console.error('Create team error:', error);
       toast({
         title: "Creation Failed",
-        description: "Failed to create team",
+        description: error instanceof Error ? error.message : "Failed to create team",
         variant: "destructive"
       });
     }
   };
 
   const handleInviteMember = async () => {
-    if (!inviteEmail || !selectedTeam) {
+    if (!inviteEmail || !selectedTeam || !user) {
       toast({
         title: "Validation Error",
-        description: "Please enter an email address",
+        description: "Please enter an email address and ensure a team is selected",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      // Simulate API call - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Extract username from email or use the email as username
+      const username = inviteEmail.split('@')[0];
       
-      toast({
-        title: "Invitation Sent!",
-        description: `Invitation has been sent to ${inviteEmail}`,
-      });
+      const result = await teamService.inviteMember(selectedTeam._row_id, username);
       
-      setInviteEmail('');
+      if (result && result.success) {
+        toast({
+          title: "Invitation Sent!",
+          description: `Invitation has been sent to ${username}`,
+        });
+        
+        setInviteEmail('');
+      } else {
+        throw new Error(result?.error || 'Failed to send invitation');
+      }
     } catch (error) {
       console.error('Invite error:', error);
       toast({
         title: "Invitation Failed",
-        description: "Failed to send invitation",
+        description: error instanceof Error ? error.message : "Failed to send invitation",
         variant: "destructive"
       });
     }
   };
 
-  const handleRemoveMember = async (memberId: number, username: string) => {
-    if (!confirm(`Are you sure you want to remove ${username} from the team?`)) {
+  const handleRemoveMember = async (memberUsername: string) => {
+    if (!confirm(`Are you sure you want to remove ${memberUsername} from the team?`)) {
       return;
     }
 
+    if (!selectedTeam) return;
+
     try {
-      // Simulate API call - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const result = await teamService.removeMember(selectedTeam._row_id, memberUsername);
       
-      toast({
-        title: "Member Removed",
-        description: `${username} has been removed from the team`,
-      });
-      
-      loadTeamMembers(selectedTeam._row_id);
+      if (result && result.success) {
+        toast({
+          title: "Member Removed",
+          description: `${memberUsername} has been removed from the team`,
+        });
+        
+        // Reload team data
+        loadTeams();
+        if (selectedTeam) {
+          loadTeamMembers(selectedTeam._row_id);
+        }
+      } else {
+        throw new Error(result?.error || 'Failed to remove member');
+      }
     } catch (error) {
       console.error('Remove member error:', error);
       toast({
         title: "Removal Failed",
-        description: "Failed to remove member",
+        description: error instanceof Error ? error.message : "Failed to remove member",
         variant: "destructive"
       });
     }
@@ -527,7 +491,7 @@ const TeamManagement = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleRemoveMember(member._row_id, member.username)}
+                              onClick={() => handleRemoveMember(member.username)}
                               className="text-red-500 hover:text-red-700"
                             >
                               <UserX className="w-4 h-4" />

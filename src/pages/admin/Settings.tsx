@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { settingsService } from '@/lib/api';
 
 const AdminSettings = () => {
   const { toast } = useToast();
@@ -69,21 +70,118 @@ const AdminSettings = () => {
     emailFromAddress: 'noreply@arenajo.com'
   });
 
+  const loadSettings = async () => {
+    try {
+      // Load settings for each category
+      const categories = ['general', 'payments', 'notifications', 'email'] as const;
+      
+      for (const category of categories) {
+        const result = await settingsService.getSettings(category);
+        
+        if (result && result.success && result.settings) {
+          const settings = result.settings as Record<string, unknown>;
+          
+          switch (category) {
+            case 'general':
+              setGeneralSettings({
+                siteName: (settings.site_name as string) || 'ArenaJo',
+                siteDescription: (settings.site_description as string) || 'Premier Esports Tournament Platform for Jordan and MENA',
+                contactEmail: (settings.contact_email as string) || 'info@arenajo.com',
+                timezone: (settings.timezone as string) || 'Asia/Amman',
+                currency: (settings.currency as string) || 'JOD',
+                language: (settings.language as string) || 'en'
+              });
+              break;
+              
+            case 'payments':
+              setPaymentSettings({
+                enableDeposits: (settings.enable_deposits as boolean) ?? true,
+                enableWithdrawals: (settings.enable_withdrawals as boolean) ?? true,
+                minWithdrawalAmount: (settings.min_withdrawal_amount as number) || 10.00,
+                maxWithdrawalAmount: (settings.max_withdrawal_amount as number) || 5000.00,
+                pendingWithdrawalPeriod: (settings.withdrawal_pending_days as number) || 48,
+                platformFee: (settings.platform_fee_percentage as number) || 0.50,
+                enableCreditCard: ((settings.payment_methods as string[]) || []).includes('credit_card'),
+                enableBankTransfer: ((settings.payment_methods as string[]) || []).includes('bank_transfer'),
+                enableMobileWallets: ((settings.payment_methods as string[]) || []).includes('mobile_wallets')
+              });
+              break;
+              
+            case 'notifications':
+              setNotificationSettings({
+                emailNotifications: (settings.email_notifications as boolean) ?? true,
+                smsNotifications: (settings.sms_notifications as boolean) ?? false,
+                tournamentReminders: (settings.tournament_reminders as boolean) ?? true,
+                resultNotifications: (settings.match_notifications as boolean) ?? true,
+                paymentNotifications: (settings.wallet_notifications as boolean) ?? true,
+                welcomeEmail: (settings.welcome_email as boolean) ?? true
+              });
+              break;
+              
+            case 'email':
+              setEmailSettings({
+                smtpHost: (settings.smtp_host as string) || 'smtp.arenajo.com',
+                smtpPort: (settings.smtp_port as number) || 587,
+                smtpUsername: (settings.smtp_username as string) || 'noreply@arenajo.com',
+                smtpPassword: (settings.smtp_password as string) || '********',
+                emailFromName: (settings.from_name as string) || 'ArenaJo Team',
+                emailFromAddress: (settings.from_email as string) || 'noreply@arenajo.com'
+              });
+              break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      toast({
+        title: "Load Failed",
+        description: "Failed to load settings. Using defaults.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
   const handleSaveSettings = async (section: string, settings: Record<string, unknown>) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let category: 'general' | 'payments' | 'notifications' | 'email' = 'general';
       
-      toast({
-        title: "Settings Saved",
-        description: `${section} settings have been updated successfully`,
-      });
+      switch (section) {
+        case 'General':
+          category = 'general';
+          break;
+        case 'Tournament':
+        case 'Payment':
+          category = 'payments';
+          break;
+        case 'Notification':
+          category = 'notifications';
+          break;
+        case 'Email':
+          category = 'email';
+          break;
+      }
+      
+      const result = await settingsService.updateSettings(category, settings);
+      
+      if (result && result.success) {
+        toast({
+          title: "Settings Saved",
+          description: `${section} settings have been updated successfully`,
+        });
+      } else {
+        throw new Error(result?.error || 'Failed to save settings');
+      }
     } catch (error) {
+      console.error('Failed to save settings:', error);
       toast({
         title: "Save Failed",
-        description: "Failed to save settings. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to save settings. Please try again.",
         variant: "destructive"
       });
     } finally {
