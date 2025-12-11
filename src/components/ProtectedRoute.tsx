@@ -7,8 +7,8 @@ import { Loader2, Shield, AlertTriangle } from 'lucide-react';
 // TEMPORARY: Hardcoded admin bypass - REMOVE IN PRODUCTION
 const ADMIN_EMAILS = ['admin@arenajo.com'];
 
-// EMERGENCY BYPASS: For debugging authentication issues - REMOVE IN PRODUCTION
-const EMERGENCY_ADMIN_BYPASS = true;
+// EMERGENCY BYPASS: DISABLED - Production mode enabled
+const EMERGENCY_ADMIN_BYPASS = false;
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -32,7 +32,7 @@ const ProtectedRoute = ({
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // EMERGENCY BYPASS: Always grant access when bypass is enabled - REMOVE IN PRODUCTION
+        // EMERGENCY BYPASS: DISABLED - Production mode enabled
         if (EMERGENCY_ADMIN_BYPASS && (requireAuth || requireAdmin)) {
           console.log('🚨 EMERGENCY BYPASS: Granting access without auth');
           setIsAdmin(true);
