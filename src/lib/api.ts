@@ -588,7 +588,7 @@ export const walletService = {
           console.log('Found user wallet:', wallet);
           return {
             balance: wallet.balance || 0,
-            currency: wallet.currency || 'JOD',
+            currency: 'JOD',
             username: user.email // Use email as username for consistency
           };
         }
@@ -620,7 +620,6 @@ export const walletService = {
         try {
           await db.insert('user_wallets', {
             balance: 0,
-            currency: 'JOD',
             _created_by: (user as { id: string }).id
           });
           console.log('Created default wallet for user');

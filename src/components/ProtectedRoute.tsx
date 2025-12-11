@@ -81,8 +81,7 @@ const ProtectedRoute = ({
             console.log('User role:', adminUser?.role);
             console.log('isAdminByDB:', isAdminByDB);
             
-            console.log('isAdminByDB:', isAdminByDB);
-            console.log('adminUser:', adminUser);
+            console.log('✅ Final admin decision:', { isAdminByDB, adminUser, user });
             
             setIsAdmin(isAdminByDB);
 

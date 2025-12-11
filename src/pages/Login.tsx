@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -15,12 +15,42 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const user = await auth.getUser();
+        if (user) {
+          console.log('User already logged in, redirecting...', user.email);
+          navigate('/');
+        }
+      } catch (error) {
+        console.log('No active session found');
+      }
+    };
+    
+    checkAuth();
+  }, [navigate]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await auth.signIn(email, password);
+      console.log('Attempting login with:', email);
+      const user = await auth.signIn(email, password);
+      console.log('Login successful:', user);
+      
+      // Verify session was established
+      setTimeout(async () => {
+        try {
+          const sessionCheck = await auth.getUser();
+          console.log('Session verification:', sessionCheck);
+        } catch (sessionError) {
+          console.error('Session verification failed:', sessionError);
+        }
+      }, 1000);
+      
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
