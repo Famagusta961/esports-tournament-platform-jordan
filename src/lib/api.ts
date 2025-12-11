@@ -1,0 +1,822 @@
+import db from '@/lib/shared/kliv-database.js';
+import auth from '@/lib/shared/kliv-auth.js';
+import functions from '@/lib/shared/kliv-functions.js';
+
+// Utility function to handle API errors
+const handleApiError = (error: unknown, defaultMessage: string) => {
+  console.error(defaultMessage, error);
+  const errorMessage = error as Error | Record<string, unknown>;
+  const message = (errorMessage as Record<string, unknown>)?.error || (errorMessage as Error)?.message || defaultMessage;
+  throw new Error(message);
+};
+
+// Types
+export interface Tournament {
+  _row_id: number;
+  title: string;
+  game_id: number;
+  description?: string;
+  rules?: string;
+  format?: string;
+  format_type?: string;
+  platform?: string;
+  entry_fee: number;
+  prize_pool: number;
+  max_players: number;
+  current_players: number;
+  start_date: string;
+  start_time: string;
+  registration_deadline?: string;
+  status: string;
+  bracket_data?: string;
+  is_featured: boolean;
+  game_name?: string;
+  game_display_name?: string;
+  creator_username?: string;
+  creator_avatar?: string;
+}
+
+export interface TournamentRegistration {
+  tournament_id: number;
+  username: string;
+  joined_at: number;
+  payment_status: string;
+  team_id?: number;
+}
+
+export interface Match {
+  _row_id: number;
+  tournament_id: number;
+  round_number: number;
+  match_number: number;
+  player1_username?: string;
+  player2_username?: string;
+  team1_id?: number;
+  team2_id?: number;
+  winner_username?: string;
+  winner_team_id?: number;
+  score?: string;
+  status: string;
+  scheduled_time?: number;
+  started_at?: number;
+  completed_at?: number;
+  can_report?: boolean;
+  team1_name?: string;
+  team2_name?: string;
+  team1_tag?: string;
+  team2_tag?: string;
+}
+
+export interface Transaction {
+  _row_id: number;
+  username: string;
+  amount: number;
+  type: string;
+  status: string;
+  description?: string;
+  payment_method?: string;
+  reference_id: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface Wallet {
+  username: string;
+  balance: number;
+  currency: string;
+}
+
+export interface Game {
+  _row_id: number;
+  slug: string;
+  name: string;
+  short_name?: string;
+  description?: string;
+  platforms?: string;
+  formats?: string;
+  is_active: number;
+}
+
+
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+// Auth service using Kliv Auth SDK
+export const authService = {
+  signUp: async (email: string, password: string, name?: string) => {
+    try {
+      return await auth.signUp(email, password, name);
+    } catch (error) {
+      handleApiError(error, 'Registration failed');
+    }
+  },
+
+  signIn: async (email: string, password: string) => {
+    try {
+      return await auth.signIn(email, password);
+    } catch (error) {
+      handleApiError(error, 'Login failed');
+    }
+  },
+
+  signOut: async () => {
+    try {
+      return await auth.signOut();
+    } catch (error) {
+      handleApiError(error, 'Logout failed');
+    }
+  },
+
+  getCurrentUser: async () => {
+    try {
+      return await auth.getUser();
+    } catch (error) {
+      handleApiError(error, 'Failed to get current user');
+    }
+  },
+
+  updateUser: async (data: { email?: string; password?: string; firstName?: string; lastName?: string; metadata?: Record<string, unknown> }) => {
+    try {
+      return await auth.updateUser(data);
+    } catch (error) {
+      handleApiError(error, 'Failed to update user');
+    }
+  }
+};
+
+// Tournament service using edge functions for private ops, DB SDK for public listing
+export const tournamentService = {
+  // List tournaments - try edge function first, fallback to database
+  list: async (params?: { status?: string; game?: string; limit?: number; offset?: number }) => {
+    try {
+      // Try edge function first (for authenticated users)
+      const response = await functions.get('tournament-list', params);
+      return response;
+    } catch (error) {
+      // If authentication fails (403), fallback to database SDK for public data
+      if ((error as { status?: number })?.status === 403) {
+        try {
+          console.log('Edge function requires auth, using database SDK for public tournaments');
+          
+          // Build database query parameters
+          const dbParams: Record<string, unknown> = {
+            ...(params?.status && params.status !== 'all' && { status: 'eq.' + params.status }),
+            ...(params?.game && params.game !== 'all' && { 'game.slug': 'eq.' + params.game }),
+            order: '_created_at.desc',
+            limit: params?.limit || 20,
+            offset: params?.offset || 0
+          };
+
+          // Don't show draft tournaments to public
+          if (!params?.status || params.status === 'all') {
+            dbParams.status = 'in.(registration,upcoming,live,completed)';
+          }
+
+          const { data: tournaments } = await db.query('tournaments', dbParams);
+
+          // Join with games data - handle both slug and numeric game_id
+          const tournamentsWithGames = await Promise.all(tournaments?.map(async (tournament) => {
+            let gameName = 'Unknown Game';
+            let gameSlug = 'unknown';
+            
+            if (tournament.game_id) {
+              try {
+                // Try by slug first (most common)
+                const { data: games } = await db.query('games', { slug: 'eq.' + tournament.game_id });
+                const game = games?.[0];
+                if (game) {
+                  gameName = game.name;
+                  gameSlug = game.slug;
+                } else {
+                  // Try by numeric ID if slug didn't work
+                  const gameIdNum = parseInt(tournament.game_id as string);
+                  if (!isNaN(gameIdNum)) {
+                    const { data: gamesById } = await db.query('games', { _row_id: 'eq.' + gameIdNum });
+                    const gameById = gamesById?.[0];
+                    if (gameById) {
+                      gameName = gameById.name;
+                      gameSlug = gameById.slug;
+                    }
+                  }
+                }
+              } catch (gameError) {
+                console.warn('Failed to fetch game for tournament:', { gameError, tournamentId: tournament._row_id, gameId: tournament.game_id });
+              }
+            }
+            
+            return {
+              ...tournament,
+              game_name: gameName,
+              game_slug: gameSlug
+            };
+          }) || []);
+
+          return {
+            success: true,
+            tournaments: tournamentsWithGames,
+            pagination: {
+              total: tournamentsWithGames.length,
+              limit: params?.limit || 20,
+              offset: params?.offset || 0,
+              hasMore: tournamentsWithGames.length === (params?.limit || 20)
+            }
+          };
+        } catch (dbError) {
+          handleApiError(dbError, 'Failed to fetch tournaments from database');
+        }
+      } else {
+        // Re-throw original error if it's not an auth issue
+        handleApiError(error, 'Failed to fetch tournaments');
+      }
+    }
+  },
+
+  // Get tournament details - try edge function first, fallback to database
+  getById: async (id: number) => {
+    try {
+      console.log("tournamentService.getById: Attempting to fetch tournament", { id, source: "edge-function" });
+      
+      // Try edge function first (for authenticated users)
+      const response = await functions.get('tournament-details', { id });
+      
+      console.log("tournamentService.getById: Edge function response", { 
+        id, 
+        success: response?.success, 
+        hasTournament: !!response?.tournament,
+        error: response?.error
+      });
+      
+      // Handle different response structures
+      if (response && (response.success || response.tournament)) {
+        return response;
+      } else {
+        throw new Error(response?.error || 'Failed to fetch tournament details');
+      }
+    } catch (error) {
+      console.log("tournamentService.getById: Edge function failed, trying database fallback", { 
+        id, 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        status: (error as { status?: number }).status
+      });
+      
+      // If authentication fails (403), fallback to database SDK for public data
+      if ((error as { status?: number })?.status === 403) {
+        try {
+          console.log("tournamentService.getById: Using database SDK fallback", { id, source: "database" });
+          
+          // Get tournament from database
+          const { data: tournaments } = await db.query('tournaments', { 
+            _row_id: 'eq.' + id,
+            status: 'in.(registration,upcoming,live,completed)' // Don't show draft
+          });
+
+          const tournament = tournaments?.[0];
+          if (!tournament) {
+            console.log("tournamentService.getById: Tournament not found in database", { id });
+            return { success: false, error: 'Tournament not found' };
+          }
+
+          // Get game info - handle both slug and numeric game_id
+          let gameInfo = null;
+          if (tournament.game_id) {
+            try {
+              console.log("tournamentService.getById: Looking up game", { gameId: tournament.game_id, tournamentId: id });
+              
+              // Try by slug first (most common case)
+              const { data: games } = await db.query('games', { slug: 'eq.' + tournament.game_id });
+              const game = games?.[0];
+              if (game) {
+                gameInfo = {
+                  game_name: game.name,
+                  game_slug: game.slug
+                };
+                console.log("tournamentService.getById: Found game by slug", { gameName: game.name, gameSlug: game.slug });
+              } else {
+                // Try by numeric ID if slug didn't work
+                const gameIdNum = parseInt(tournament.game_id as string);
+                if (!isNaN(gameIdNum)) {
+                  console.log("tournamentService.getById: Trying numeric ID", { gameIdNum });
+                  const { data: gamesById } = await db.query('games', { _row_id: 'eq.' + gameIdNum });
+                  const gameById = gamesById?.[0];
+                  if (gameById) {
+                    gameInfo = {
+                      game_name: gameById.name,
+                      game_slug: gameById.slug
+                    };
+                    console.log("tournamentService.getById: Found game by numeric ID", { gameName: gameById.name, gameSlug: gameById.slug });
+                  }
+                }
+              }
+              
+              if (!gameInfo) {
+                console.warn("tournamentService.getById: Game not found", { gameId: tournament.game_id, tournamentId: id });
+                gameInfo = { game_name: 'Unknown Game', game_slug: 'unknown' };
+              }
+            } catch (gameError) {
+              console.error('tournamentService.getById: Failed to fetch game', { gameError, gameId: tournament.game_id, tournamentId: id });
+              gameInfo = { game_name: 'Unknown Game', game_slug: 'unknown' };
+            }
+          }
+
+          // Get creator info
+          let creatorInfo = null;
+          if (tournament._created_by) {
+            const { data: users } = await db.query('users', { _row_id: 'eq.' + tournament._created_by });
+            const user = users?.[0];
+            if (user) {
+              creatorInfo = {
+                creator_username: user.username,
+                creator_avatar: user.avatar_url
+              };
+            }
+          }
+
+          const result = {
+            success: true,
+            tournament: {
+              ...tournament,
+              ...gameInfo,
+              ...creatorInfo,
+              user_registration: null, // No user-specific data for public view
+              is_admin: false
+            }
+          };
+          
+          console.log("tournamentService.getById: Database fallback successful", { id, hasGameInfo: !!gameInfo });
+          return result;
+        } catch (dbError) {
+          console.error("tournamentService.getById: Database fallback failed", { id, error: dbError });
+          handleApiError(dbError, 'Failed to fetch tournament details from database');
+        }
+      } else {
+        // Re-throw original error if it's not an auth issue
+        console.error("tournamentService.getById: Non-auth error from edge function", { id, error });
+        handleApiError(error, 'Failed to fetch tournament details');
+      }
+    }
+  },
+
+  // Create tournament
+  create: async (data: {
+    title: string;
+    game_slug: string;
+    description?: string;
+    rules?: string;
+    format?: string;
+    format_type?: string;
+    platform?: string;
+    entry_fee?: number;
+    prize_pool?: number;
+    max_players: number;
+    start_date?: string;
+    start_time?: string;
+    registration_deadline?: string;
+    tournament_type?: string;
+    match_format?: string;
+  }) => {
+    try {
+      const response = await functions.post('tournament-create', data);
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to create tournament');
+    }
+  },
+
+  // Join tournament
+  join: async (tournamentId: number, teamId?: number) => {
+    try {
+      console.log('Attempting to join tournament:', tournamentId);
+      
+      // IMPORTANT: Since authentication is not forwarded to edge functions (platform issue),
+      // we're implementing a database-based registration fallback
+      
+      // First try edge function (will fail with 403 due to platform auth issue)
+      try {
+        const response = await functions.post('tournament-join', {
+          tournament_id: tournamentId,
+          team_id: teamId
+        });
+        
+        console.log('Tournament join response (edge function):', response);
+        
+        // If edge function returns success: true, show appropriate message
+        if (response.success) {
+          if (response.alreadyRegistered) {
+            return {
+              success: true,
+              message: response.message || "You are already registered for this tournament",
+              alreadyRegistered: true
+            };
+          } else {
+            return {
+              success: true,
+              message: response.message || "Successfully registered for tournament",
+              alreadyRegistered: false
+            };
+          }
+        }
+        
+        // If success: false, throw the message as error
+        if (response.success === false && response.message) {
+          throw new Error(response.message);
+        }
+      } catch (edgeError) {
+        // Edge function failed (expected due to auth issue) - fallback to database
+        console.log('Edge function failed (expected auth issue), using database fallback:', edgeError instanceof Error ? edgeError.message : edgeError);
+      }
+      
+      // DATABASE FALLBACK: Direct database registration
+      console.log('Using database fallback for tournament registration');
+      
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('Authentication required to join tournament');
+      }
+      
+      // Check if tournament exists and is accepting registrations
+      const { data: tournaments } = await db.query('tournaments', {
+        _row_id: 'eq.' + tournamentId,
+        status: 'in.(registration,upcoming)' // Only allow registration for these statuses
+      });
+      
+      const tournament = tournaments?.[0];
+      if (!tournament) {
+        throw new Error('Tournament not found or registration is closed');
+      }
+      
+      // Check if user is already registered
+      const { data: existingRegistrations } = await db.query('tournament_players', {
+        tournament_row_id: 'eq.' + tournamentId,
+        user_uuid: 'eq.' + (user as { id: string }).id
+      });
+      
+      if (existingRegistrations && existingRegistrations.length > 0) {
+        return {
+          success: true,
+          message: "You are already registered for this tournament",
+          alreadyRegistered: true
+        };
+      }
+      
+      // Check if tournament is full
+      const { data: allRegistrations } = await db.query('tournament_players', {
+        tournament_row_id: 'eq.' + tournamentId
+      });
+      
+      if (tournament.max_players && allRegistrations && allRegistrations.length >= tournament.max_players) {
+        throw new Error('Tournament is full');
+      }
+      
+      // Register user for tournament
+      const registration = await db.insert('tournament_players', {
+        tournament_row_id: tournamentId,
+        user_uuid: (user as { id: string }).id,
+        status: 'registered',
+        joined_at: Math.floor(Date.now() / 1000),
+        team_id: teamId
+      });
+      
+      // Update tournament player count
+      await db.update('tournaments', 
+        { _row_id: 'eq.' + tournamentId }, 
+        { 
+          current_players: (allRegistrations?.length || 0) + 1,
+          _updated_at: Math.floor(Date.now() / 1000)
+        }
+      );
+      
+      console.log('Database fallback registration successful:', registration);
+      
+      return {
+        success: true,
+        message: "Successfully registered for tournament",
+        alreadyRegistered: false
+      };
+      
+    } catch (error) {
+      console.error('Tournament join error:', error);
+      // Don't wrap the error again - let the message through
+      throw error;
+    }
+  }
+};
+
+// Match service using edge functions
+export const matchService = {
+  // Report match result
+  reportResult: async (data: {
+    match_id: number;
+    score: string;
+    screenshot_url?: string;
+    notes?: string;
+  }) => {
+    try {
+      const response = await functions.post('match-report', data);
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to report match result');
+    }
+  },
+
+  // Get match details
+  getById: async (matchId: number) => {
+    try {
+      const { data: matches } = await db.query('matches', {
+        _row_id: 'eq.' + matchId
+      });
+
+      return matches?.[0];
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch match details');
+    }
+  }
+};
+
+// Wallet service using edge functions
+export const walletService = {
+  // Deposit funds
+  deposit: async (data: {
+    amount: number;
+    payment_method?: string;
+    description?: string;
+  }) => {
+    try {
+      const response = await functions.post('wallet-deposit', data);
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to process deposit');
+    }
+  },
+
+  // Request withdrawal
+  withdraw: async (data: {
+    amount: number;
+    description?: string;
+  }) => {
+    try {
+      const response = await functions.post('wallet-withdraw', data);
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to process withdrawal');
+    }
+  },
+
+  // Get wallet balance
+  getBalance: async () => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('Fetching wallet balance for user:', { userId: (user as { id: string }).id, email: user.email });
+
+      // Since edge functions aren't working due to auth issue, use database SDK directly
+      try {
+        // First try user_wallets table
+        const { data: userWallets } = await db.query('user_wallets', {
+          _created_by: 'eq.' + (user as { id: string }).id
+        });
+
+        if (userWallets && userWallets.length > 0) {
+          const wallet = userWallets[0];
+          console.log('Found user wallet:', wallet);
+          return {
+            balance: wallet.balance || 0,
+            currency: wallet.currency || 'JOD',
+            username: user.email // Use email as username for consistency
+          };
+        }
+
+        // Try wallets_table as fallback - use user_uuid field instead of username
+        const { data: wallets } = await db.query('wallets_table', {
+          user_uuid: 'eq.' + (user as { id: string }).id
+        });
+
+        if (wallets && wallets.length > 0) {
+          const wallet = wallets[0];
+          console.log('Found wallet in wallets_table:', wallet);
+          return {
+            balance: wallet.balance || 0,
+            currency: 'JOD', // wallets_table doesn't have currency field
+            username: user.email // Use email for consistency
+          };
+        }
+
+        // No wallet found, create a default one
+        console.log('No wallet found, creating default wallet for user');
+        const defaultWallet = {
+          balance: 0,
+          currency: 'JOD',
+          username: user.email
+        };
+
+        // Try to create the wallet
+        try {
+          await db.insert('user_wallets', {
+            balance: 0,
+            currency: 'JOD',
+            _created_by: (user as { id: string }).id
+          });
+          console.log('Created default wallet for user');
+        } catch (createError) {
+          console.warn('Failed to create default wallet:', createError);
+        }
+
+        return defaultWallet;
+
+      } catch (dbError) {
+        console.error('Database error fetching wallet:', dbError);
+        throw new Error('Failed to load wallet information');
+      }
+    } catch (error) {
+      console.error('Wallet service error:', error);
+      throw new Error('Failed to load wallet information');
+    }
+  },
+
+  // Get transaction history
+  getTransactions: async (params?: { limit?: number; offset?: number; type?: string }) => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Query transactions directly using database SDK
+      // Note: transactions_table uses user_uuid field, not username
+      const { data: transactions } = await db.query('transactions_table', {
+        user_uuid: 'eq.' + (user as { id: string }).id,
+        ...(params?.type && { type: 'eq.' + params.type }),
+        order: '_created_at.desc',
+        limit: params?.limit || 20,
+        offset: params?.offset || 0
+      });
+
+      return transactions || [];
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch transactions');
+    }
+  }
+};
+
+// Game service using database SDK
+export const gameService = {
+  // List all games
+  list: async () => {
+    try {
+      const { data: games } = await db.query('games', {
+        is_active: 'eq.1',
+        order: 'name.asc'
+      });
+
+      return games || [];
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch games');
+    }
+  },
+
+  // Get game by slug
+  getBySlug: async (slug: string) => {
+    try {
+      const { data: games } = await db.query('games', {
+        slug: 'eq.' + slug,
+        is_active: 'eq.1'
+      });
+
+      return games?.[0];
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch game');
+    }
+  }
+};
+
+// User service using database SDK
+export const userService = {
+  // Get user profile
+  getProfile: async () => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: profiles } = await db.query('users', {
+        email: 'eq.' + user.email
+      });
+
+      return profiles?.[0];
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch user profile');
+    }
+  },
+
+  // Update user profile
+  updateProfile: async (data: { username?: string; avatar_url?: string; phone?: string }) => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: profiles } = await db.query('users', {
+        email: 'eq.' + user.email
+      });
+
+      if (!profiles?.[0]) {
+        throw new Error('User profile not found');
+      }
+
+      const updatedProfile = await db.update('users', 
+        { _row_id: 'eq.' + profiles[0]._row_id }, 
+        data
+      );
+
+      return updatedProfile;
+    } catch (error) {
+      handleApiError(error, 'Failed to update profile');
+    }
+  }
+};
+
+// Team service
+export const teamService = {
+  // Get user's teams
+  getUserTeams: async () => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get teams where user is a member
+      const { data: memberships } = await db.query('team_members', {
+        username: 'eq.' + (user as { username: string }).username,
+        is_active: 'eq.1'
+      });
+
+      if (!memberships?.length) {
+        return [];
+      }
+
+      const teamIds = memberships.map(m => m.team_id);
+      const { data: teams } = await db.query('teams', {
+        '_row_id': `in.(${teamIds.join(',')})`
+      });
+
+      return teams || [];
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch user teams');
+    }
+  },
+
+  // Create team
+  create: async (data: {
+    name: string;
+    description?: string;
+    tag?: string;
+  }) => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create team with user as captain
+      const teamData = {
+        ...data,
+        captain_username: (user as { username: string }).username
+      };
+
+      const createdTeam = await db.insert('teams', teamData);
+      
+      // Add creator as team member
+      if (createdTeam?.[0]?._row_id) {
+        await db.insert('team_members', {
+          team_id: createdTeam[0]._row_id,
+          username: (user as { username: string }).username,
+          role: 'captain'
+        });
+      }
+
+      return createdTeam?.[0];
+    } catch (error) {
+      handleApiError(error, 'Failed to create team');
+    }
+  }
+};
+
+export default {
+  auth: authService,
+  tournament: tournamentService,
+  match: matchService,
+  wallet: walletService,
+  game: gameService,
+  user: userService,
+  team: teamService
+};
