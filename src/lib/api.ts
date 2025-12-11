@@ -653,13 +653,27 @@ export const walletService = {
 
         // Try to create the wallet
         try {
+          const userId = (user as { id: string }).id;
+          console.log('Creating wallet for user UUID:', userId);
+          
           await db.insert('user_wallets', {
             balance: 0,
-            user_uuid: (user as { id: string }).id
+            user_uuid: userId
           });
           console.log('Created default wallet for user');
         } catch (createError) {
           console.warn('Failed to create default wallet:', createError);
+          // Try the wallets_table as fallback
+          try {
+            const userId = (user as { id: string }).id;
+            await db.insert('wallets_table', {
+              balance: 0,
+              user_uuid: userId
+            });
+            console.log('Created default wallet in wallets_table');
+          } catch (fallbackError) {
+            console.warn('Failed to create wallet in both tables:', fallbackError);
+          }
         }
 
         return defaultWallet;

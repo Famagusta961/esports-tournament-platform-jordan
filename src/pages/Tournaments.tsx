@@ -73,10 +73,7 @@ const Tournaments = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadGames();
-  }, []);
-
+  // Define loadTournaments BEFORE useEffect that calls it
   const loadTournaments = useCallback(async () => {
     try {
       setLoading(true);
@@ -98,6 +95,12 @@ const Tournaments = () => {
       setLoading(false);
     }
   }, [gameFilter, statusFilter]);
+
+  useEffect(() => {
+    loadGames();
+  }, []);
+
+  
 
   useEffect(() => {
     loadTournaments();
