@@ -8,15 +8,12 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <Link to="/" className="flex items-center space-x-3">
+            <Link to="/" className="inline-block">
               <img 
-                src="/arenajo-logo.png" 
+                src="/arenajo-logo-rectangle.png" 
                 alt="ArenaJo" 
-                className="w-10 h-10 rounded-lg object-contain"
+                className="h-10 w-auto object-contain"
               />
-              <span className="font-display font-bold text-xl tracking-wider">
-                ARENA<span className="text-primary">JO</span>
-              </span>
             </Link>
             <p className="text-muted-foreground text-sm font-gaming">
               Jordan's premier esports tournament platform. Compete, win, and become a champion.

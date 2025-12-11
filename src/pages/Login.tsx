@@ -78,13 +78,12 @@ const Login = () => {
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
-        <Link to="/" className="flex items-center justify-center space-x-2 mb-8">
-          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <span className="font-display font-bold text-2xl text-primary-foreground">A</span>
-          </div>
-          <span className="font-display font-bold text-2xl tracking-wider">
-            ARENA<span className="text-primary">JO</span>
-          </span>
+        <Link to="/" className="flex items-center justify-center mb-8">
+          <img 
+            src="/arenajo-logo-square.png" 
+            alt="ArenaJo" 
+            className="w-12 h-12 rounded-lg object-contain"
+          />
         </Link>
 
         {/* Card */}

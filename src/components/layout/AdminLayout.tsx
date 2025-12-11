@@ -86,9 +86,9 @@ const AdminLayout = () => {
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center space-x-3">
               <img 
-                src="/arenajo-logo.png" 
+                src="/arenajo-logo-rectangle.png" 
                 alt="ArenaJo Admin" 
-                className="w-10 h-10 rounded-lg object-contain"
+                className="h-10 w-auto object-contain"
               />
               <div>
                 <h2 className="font-display font-bold text-lg">Admin</h2>
