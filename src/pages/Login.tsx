@@ -82,7 +82,7 @@ const Login = () => {
           <img 
             src="/arenajo-logo-square.png" 
             alt="ArenaJo" 
-            className="w-12 h-12 rounded-lg object-contain"
+            className="w-12 h-12 object-contain"
           />
         </Link>
 

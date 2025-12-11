@@ -21,9 +21,9 @@ const HeroSection = () => {
               <img 
                 src="/arenajo-logo-square.png" 
                 alt="ArenaJo" 
-                className="w-16 h-16 rounded-2xl object-contain"
+                className="w-16 h-16 object-contain"
               />
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-secondary blur-xl opacity-30" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary blur-xl opacity-30" />
             </div>
             <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30">
               <Zap className="w-4 h-4 text-primary" />
