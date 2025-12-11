@@ -12,11 +12,18 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import Wallet from "./pages/Wallet";
+import TournamentRegistration from "./pages/TournamentRegistration";
+import MatchSubmission from "./pages/MatchSubmission";
+import TeamManagement from "./pages/TeamManagement";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "@/components/layout/AdminLayout";
 import AdminIndex from "./pages/admin/Index";
 import AdminTournaments from "./pages/admin/Tournaments";
 import CreateTournament from "./pages/admin/CreateTournament";
+import EditTournament from "./pages/admin/EditTournament";
+import AdminUsers from "./pages/admin/Users";
+import AdminWallet from "./pages/admin/Wallet";
+import AdminSettings from "./pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
@@ -30,22 +37,25 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/tournaments/:id" element={<TournamentDetails />} />
+            <Route path="/tournaments/:id/register" element={<TournamentRegistration />} />
+            <Route path="/matches/:id/submit" element={<MatchSubmission />} />
           <Route path="/games" element={<Games />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/wallet" element={<Wallet />} />
+          <Route path="/teams" element={<TeamManagement />} />
           
-          {/* Admin Routes - Public Access for Debug */}
+          {/* Admin Routes - Protected Access */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminIndex />} />
             <Route path="tournaments" element={<AdminTournaments />} />
             <Route path="tournaments/create" element={<CreateTournament />} />
-            <Route path="tournaments/edit/:id" element={<div>Tournament Edit (Coming Soon)</div>} />
-            <Route path="users" element={<div>Users Management (Coming Soon)</div>} />
-            <Route path="wallet" element={<div>Wallet Management (Coming Soon)</div>} />
-            <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
+            <Route path="tournaments/edit/:id" element={<EditTournament />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="wallet" element={<AdminWallet />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
