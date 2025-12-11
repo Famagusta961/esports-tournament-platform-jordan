@@ -4,6 +4,9 @@ import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
 import { Loader2, Shield, AlertTriangle } from 'lucide-react';
 
+// TEMPORARY: Hardcoded admin bypass - REMOVE IN PRODUCTION
+const ADMIN_EMAILS = ['admin@arenajo.com'];
+
 interface ProtectedRouteProps {
   children: ReactNode;
   requireAuth?: boolean;
@@ -36,6 +39,20 @@ const ProtectedRoute = ({
 
         if (requireAdmin && user) {
           try {
+            console.log('=== ADMIN CHECK DEBUG ===');
+            console.log('Auth user object:', user);
+            console.log('Auth user email:', user.email);
+            console.log('Auth user metadata:', user.metadata);
+            console.log('Auth user ID:', user.id);
+            
+            // LEGACY SUPPORT: Check both hardcoded list and database
+            if (ADMIN_EMAILS.includes(user.email)) {
+              console.log('🔓 HARDCODED BYPASS: Granting admin access to', user.email);
+              setIsAdmin(true);
+              setAdminCheckFailed(false);
+              return;
+            }
+            
             // Check database for admin role - this is the authoritative source
             const { data: users } = await db.query('users', {
               email: 'eq.' + user.email,
@@ -43,19 +60,24 @@ const ProtectedRoute = ({
             });
 
             console.log('Admin query result for', user.email, ':', users);
+            console.log('Query result length:', users?.length || 0);
+            
             const adminUser = users?.[0];
             const isAdminByDB = !!adminUser;
+            
+            console.log('isAdminByDB:', isAdminByDB);
+            console.log('adminUser:', adminUser);
             
             setIsAdmin(isAdminByDB);
 
             if (!adminUser) {
-              console.log('No admin role found for user:', user.email);
+              console.log('❌ No admin role found for user:', user.email);
               setAdminCheckFailed(true);
             } else {
-              console.log('Admin access granted for:', user.email);
+              console.log('✅ Admin access granted for:', user.email);
             }
           } catch (error) {
-            console.error('Admin check failed:', error);
+            console.error('❌ Admin check failed:', error);
             setAdminCheckFailed(true);
           }
         }
