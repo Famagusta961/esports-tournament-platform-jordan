@@ -32,9 +32,9 @@ const ProtectedRoute = ({
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // EMERGENCY BYPASS: Always grant admin access - REMOVE IN PRODUCTION
-        if (requireAdmin && EMERGENCY_ADMIN_BYPASS) {
-          console.log('🚨 EMERGENCY BYPASS: Granting admin access without auth');
+        // EMERGENCY BYPASS: Always grant access when bypass is enabled - REMOVE IN PRODUCTION
+        if (EMERGENCY_ADMIN_BYPASS && (requireAuth || requireAdmin)) {
+          console.log('🚨 EMERGENCY BYPASS: Granting access without auth');
           setIsAdmin(true);
           setIsAuthenticated(true);
           setIsChecking(false);
