@@ -1,8 +1,34 @@
 import { Link } from 'react-router-dom';
 import { Trophy, Users, Zap, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
+import auth from '@/lib/shared/kliv-auth.js';
+
+interface User {
+  userUuid: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 const HeroSection = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await auth.getUser();
+        setUser(currentUser as User);
+      } catch (error) {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Background Effects */}
@@ -53,12 +79,16 @@ const HeroSection = () => {
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link to="/register">
-              <Button size="lg" variant="outline" className="font-gaming text-lg px-8 py-6 border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10">
-                <Users className="w-5 h-5 mr-2" />
-                Create Account
-              </Button>
-            </Link>
+            
+            {/* Only show Create Account button when user is not logged in */}
+            {!loading && !user && (
+              <Link to="/register">
+                <Button size="lg" variant="outline" className="font-gaming text-lg px-8 py-6 border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10">
+                  <Users className="w-5 h-5 mr-2" />
+                  Create Account
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Stats */}
