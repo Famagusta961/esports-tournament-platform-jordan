@@ -1,0 +1,19 @@
+{
+  "name": "ArenaJo - Jordan's #1 Esports Tournament Platform",
+  "short_name": "ArenaJo",
+  "description": "Compete in the biggest esports tournaments in Jordan. PUBG Mobile, EA FC, Valorant, and more!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/arenajo-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

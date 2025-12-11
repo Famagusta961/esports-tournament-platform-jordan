@@ -65,12 +65,14 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
+          <Link to="/" className="flex items-center space-x-3 group">
             <div className="relative">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <span className="font-display font-bold text-xl text-primary-foreground">A</span>
-              </div>
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary to-secondary blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
+              <img 
+                src="/arenajo-logo.png" 
+                alt="ArenaJo" 
+                className="w-10 h-10 rounded-lg object-contain"
+              />
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary to-secondary blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
             </div>
             <span className="font-display font-bold text-xl tracking-wider">
               ARENA<span className="text-primary">JO</span>

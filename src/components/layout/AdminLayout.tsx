@@ -85,9 +85,11 @@ const AdminLayout = () => {
           {/* Sidebar Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <Shield className="w-6 h-6 text-primary-foreground" />
-              </div>
+              <img 
+                src="/arenajo-logo.png" 
+                alt="ArenaJo Admin" 
+                className="w-10 h-10 rounded-lg object-contain"
+              />
               <div>
                 <h2 className="font-display font-bold text-lg">Admin</h2>
                 <p className="text-xs text-muted-foreground">ArenaJo Panel</p>
