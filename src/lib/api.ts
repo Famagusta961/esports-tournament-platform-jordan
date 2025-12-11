@@ -387,6 +387,40 @@ export const tournamentService = {
     }
   },
 
+  // Update tournament
+  update: async (id: number, data: {
+    title?: string;
+    description?: string;
+    rules?: string;
+    format_type?: string;
+    match_format?: string;
+    platform?: string;
+    entry_fee?: number;
+    prize_pool?: number;
+    max_players?: number;
+    start_date?: string;
+    start_time?: string;
+    registration_deadline?: string;
+    status?: string;
+  }) => {
+    try {
+      const response = await functions.post('tournament-update', { tournament_id: id, ...data });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to update tournament');
+    }
+  },
+
+  // Delete tournament
+  delete: async (id: number) => {
+    try {
+      const response = await functions.post('tournament-delete', { tournament_id: id });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to delete tournament');
+    }
+  },
+
   // Join tournament
   join: async (tournamentId: number, teamId?: number) => {
     try {
@@ -514,9 +548,10 @@ export const matchService = {
     score: string;
     screenshot_url?: string;
     notes?: string;
+    winner?: string;
   }) => {
     try {
-      const response = await functions.post('match-report', data);
+      const response = await functions.post('match-result-submit', data);
       return response;
     } catch (error) {
       handleApiError(error, 'Failed to report match result');
@@ -580,7 +615,7 @@ export const walletService = {
       try {
         // First try user_wallets table
         const { data: userWallets } = await db.query('user_wallets', {
-          _created_by: 'eq.' + (user as { id: string }).id
+          user_uuid: 'eq.' + (user as { id: string }).id
         });
 
         if (userWallets && userWallets.length > 0) {
@@ -620,7 +655,7 @@ export const walletService = {
         try {
           await db.insert('user_wallets', {
             balance: 0,
-            _created_by: (user as { id: string }).id
+            user_uuid: (user as { id: string }).id
           });
           console.log('Created default wallet for user');
         } catch (createError) {
@@ -781,31 +816,215 @@ export const teamService = {
     tag?: string;
   }) => {
     try {
-      const user = await auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Create team with user as captain
-      const teamData = {
-        ...data,
-        captain_username: (user as { username: string }).username
-      };
-
-      const createdTeam = await db.insert('teams', teamData);
-      
-      // Add creator as team member
-      if (createdTeam?.[0]?._row_id) {
-        await db.insert('team_members', {
-          team_id: createdTeam[0]._row_id,
-          username: (user as { username: string }).username,
-          role: 'captain'
-        });
-      }
-
-      return createdTeam?.[0];
+      const response = await functions.post('team-management', {
+        action: 'create',
+        ...data
+      });
+      return response;
     } catch (error) {
       handleApiError(error, 'Failed to create team');
+    }
+  },
+
+  // Invite member
+  inviteMember: async (teamId: number, memberUsername: string) => {
+    try {
+      const response = await functions.post('team-management', {
+        action: 'invite',
+        team_id: teamId,
+        member_username: memberUsername
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to invite team member');
+    }
+  },
+
+  // Accept invitation
+  acceptInvite: async (inviteCode: string) => {
+    try {
+      const response = await functions.post('team-management', {
+        action: 'accept_invite',
+        invite_code: inviteCode
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to accept team invitation');
+    }
+  },
+
+  // Remove member
+  removeMember: async (teamId: number, memberUsername: string) => {
+    try {
+      const response = await functions.post('team-management', {
+        action: 'remove_member',
+        team_id: teamId,
+        member_username: memberUsername
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to remove team member');
+    }
+  },
+
+  // Leave team
+  leaveTeam: async (teamId: number) => {
+    try {
+      const response = await functions.post('team-management', {
+        action: 'leave_team',
+        team_id: teamId
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to leave team');
+    }
+  },
+
+  // Update team
+  updateTeam: async (teamId: number, data: {
+    name?: string;
+    description?: string;
+    tag?: string;
+  }) => {
+    try {
+      const response = await functions.post('team-management', {
+        action: 'update_team',
+        team_id: teamId,
+        ...data
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to update team');
+    }
+  }
+};
+
+// User management service for admins
+export const userManagementService = {
+  // Ban user
+  banUser: async (userUuid: string, reason?: string) => {
+    try {
+      const response = await functions.post('user-management', {
+        action: 'ban',
+        user_uuid: userUuid,
+        reason: reason
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to ban user');
+    }
+  },
+
+  // Unban user
+  unbanUser: async (userUuid: string) => {
+    try {
+      const response = await functions.post('user-management', {
+        action: 'unban',
+        user_uuid: userUuid
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to unban user');
+    }
+  },
+
+  // Make user admin
+  makeAdmin: async (userUuid: string) => {
+    try {
+      const response = await functions.post('user-management', {
+        action: 'make_admin',
+        user_uuid: userUuid
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to promote user to admin');
+    }
+  },
+
+  // Remove admin role
+  removeAdmin: async (userUuid: string) => {
+    try {
+      const response = await functions.post('user-management', {
+        action: 'remove_admin',
+        user_uuid: userUuid
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to remove admin role');
+    }
+  },
+
+  // Update user profile
+  updateUserProfile: async (userUuid: string, data: {
+    username?: string;
+    phone?: string;
+    avatar_url?: string;
+  }) => {
+    try {
+      const response = await functions.post('user-management', {
+        action: 'update_profile',
+        user_uuid: userUuid,
+        profile_data: data
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to update user profile');
+    }
+  },
+
+  // Delete user (soft delete)
+  deleteUser: async (userUuid: string) => {
+    try {
+      const response = await functions.post('user-management', {
+        action: 'delete',
+        user_uuid: userUuid
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to delete user');
+    }
+  }
+};
+
+// Settings service for admins
+export const settingsService = {
+  // Get settings by category
+  getSettings: async (category: 'general' | 'payments' | 'notifications' | 'email' | 'features') => {
+    try {
+      const response = await functions.post('settings-management', {
+        action: 'get',
+        category: category
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to get settings');
+    }
+  },
+
+  // Update settings
+  updateSettings: async (category: 'general' | 'payments' | 'notifications' | 'email' | 'features', settings: Record<string, unknown>) => {
+    try {
+      const response = await functions.post('settings-management', {
+        action: 'update',
+        category: category,
+        settings: settings
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to update settings');
+    }
+  },
+
+  // Reset settings to defaults
+  resetSettings: async (category: 'general' | 'payments' | 'notifications' | 'email' | 'features') => {
+    try {
+      const response = await functions.post('settings-management', {
+        action: 'reset',
+        category: category
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to reset settings');
     }
   }
 };
@@ -817,5 +1036,7 @@ export default {
   wallet: walletService,
   game: gameService,
   user: userService,
-  team: teamService
+  team: teamService,
+  userManagement: userManagementService,
+  settings: settingsService
 };
