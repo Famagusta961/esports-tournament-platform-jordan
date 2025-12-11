@@ -36,17 +36,23 @@ const ProtectedRoute = ({
 
         if (requireAdmin && user) {
           try {
-            // Check if user has admin role
+            // Check database for admin role - this is the authoritative source
             const { data: users } = await db.query('users', {
               email: 'eq.' + user.email,
               role: 'eq.admin'
             });
 
+            console.log('Admin query result for', user.email, ':', users);
             const adminUser = users?.[0];
-            setIsAdmin(!!adminUser);
+            const isAdminByDB = !!adminUser;
+            
+            setIsAdmin(isAdminByDB);
 
             if (!adminUser) {
+              console.log('No admin role found for user:', user.email);
               setAdminCheckFailed(true);
+            } else {
+              console.log('Admin access granted for:', user.email);
             }
           } catch (error) {
             console.error('Admin check failed:', error);
