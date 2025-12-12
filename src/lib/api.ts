@@ -226,7 +226,7 @@ export const tournamentService = {
           if (gameFilter && gameFilter !== 'all') {
             console.log('Filtering tournaments by game slug:', gameFilter, 'before filter:', tournamentsWithGames.length);
             tournamentsWithGames = tournamentsWithGames.filter(tournament => 
-              tournament.game_slug === gameFilter || tournament.game_name === gameFilter
+              tournament.game_slug === gameFilter
             );
             console.log('After game filter:', tournamentsWithGames.length);
           }
@@ -286,8 +286,8 @@ export const tournamentService = {
           
           // Get tournament from database
           const { data: tournaments } = await db.query('tournaments', { 
-            _row_id: 'eq.' + id,
-            status: 'in.(registration,upcoming,live,completed)' // Don't show draft
+            _row_id: 'eq.' + id
+            // Don't filter by status - show all tournaments including draft
           });
 
           const tournament = tournaments?.[0];

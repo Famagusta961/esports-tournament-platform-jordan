@@ -168,7 +168,7 @@ const Tournaments = () => {
   const filteredTournaments = tournaments.filter((tournament) => {
     const matchesSearch = tournament.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (tournament.game_name && tournament.game_name.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesGame = gameFilter === 'all' || tournament.game_name === games.find(g => g.slug === gameFilter)?.name || tournament.game_slug === gameFilter;
+    const matchesGame = gameFilter === 'all' || tournament.game_slug === gameFilter;
     const matchesStatus = statusFilter === 'all' || tournament.status === statusFilter;
     return matchesSearch && matchesGame && matchesStatus;
   });
