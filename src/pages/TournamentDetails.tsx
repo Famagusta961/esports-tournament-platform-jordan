@@ -127,10 +127,13 @@ const TournamentDetails = () => {
   const handleJoinTournament = async () => {
     if (!tournament) return;
     
+    console.log(`JOIN: Clicked tournament ${tournament._row_id} from details page`);
+    
     // Check authentication first
     try {
       const user = await auth.getUser();
       if (!user) {
+        console.log(`NOT AUTH → redirecting to login (no API call) for tournament ${tournament._row_id}`);
         // Store the tournament they were trying to join
         sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
         sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
@@ -140,12 +143,15 @@ const TournamentDetails = () => {
         return;
       }
     } catch (error) {
+      console.log(`NOT AUTH → redirecting to login (no API call) for tournament ${tournament._row_id} (caught error)`);
       // User is not authenticated
       sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
       sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
       navigate('/login');
       return;
     }
+    
+    console.log(`AUTH → calling join API for tournament ${tournament._row_id}`);
     
     // User is authenticated, proceed with tournament join
     try {

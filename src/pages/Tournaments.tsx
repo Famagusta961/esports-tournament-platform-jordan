@@ -9,6 +9,7 @@ import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useToast } from '@/hooks/use-toast';
 import { tournamentService, gameService } from '@/lib/api-new';
+import auth from '@/lib/shared/kliv-auth.js';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -117,6 +118,33 @@ const Tournaments = () => {
   };
 
   const handleJoinTournament = async (tournamentId: number) => {
+    console.log(`JOIN: Clicked tournament ${tournamentId}`);
+    
+    // Check authentication first
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        console.log(`NOT AUTH → redirecting to login (no API call) for tournament ${tournamentId}`);
+        // Store the tournament they were trying to join
+        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournamentId}`);
+        sessionStorage.setItem('joinTournamentAfterLogin', tournamentId.toString());
+        
+        // Redirect to login immediately without showing any toast
+        window.location.href = '/login';
+        return;
+      }
+    } catch (error) {
+      console.log(`NOT AUTH → redirecting to login (no API call) for tournament ${tournamentId} (caught error)`);
+      // User is not authenticated
+      sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournamentId}`);
+      sessionStorage.setItem('joinTournamentAfterLogin', tournamentId.toString());
+      window.location.href = '/login';
+      return;
+    }
+    
+    console.log(`AUTH → calling join API for tournament ${tournamentId}`);
+    
+    // User is authenticated, proceed with tournament join
     try {
       setJoiningTournament(tournamentId);
       const result = await tournamentService.join(tournamentId);
@@ -128,39 +156,32 @@ const Tournaments = () => {
         });
         loadTournaments(); // Refresh the list
       } else {
+        throw new Error(result?.error || 'Failed to join tournament');
+      }
+    } catch (error) {
+      console.error('Join tournament error:', error);
+      
+      // Only show toast for non-authentication errors
+      if (error instanceof Error && 
+          !error.message.includes('Authentication required') && 
+          !error.message.includes('Unauthorized') &&
+          error.status !== 401 && error.status !== 403) {
         toast({
           title: "Error",
-          description: result?.error || "Failed to join tournament",
+          description: error.message || "Failed to join tournament",
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error('Error joining tournament:', error);
       
-      // Check if this is an authentication error
-      if (error instanceof Error && (error.message.includes('Authentication required') || error.message.includes('Unauthorized'))) {
-        // Store the tournament they were trying to join
+      // If we get here with an auth error, redirect to login
+      if (error instanceof Error && 
+          (error.message.includes('Authentication required') || 
+           error.message.includes('Unauthorized') ||
+           error.status === 401 || error.status === 403)) {
         sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournamentId}`);
         sessionStorage.setItem('joinTournamentAfterLogin', tournamentId.toString());
-        
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to join this tournament. Redirecting you to login...",
-          variant: "destructive"
-        });
-        
-        // Redirect to login page
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 1000);
-        return;
+        window.location.href = '/login';
       }
-      
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to join tournament",
-        variant: "destructive",
-      });
     } finally {
       setJoiningTournament(null);
     }
