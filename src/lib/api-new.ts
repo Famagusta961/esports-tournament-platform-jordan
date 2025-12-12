@@ -58,24 +58,30 @@ export const tournamentService = {
         const tournament = data[0];
         console.log("New API: SUCCESS", { title: tournament.title });
         
+        // Game mapping for both slug and numeric formats
+        const gameMapping = {
+          '1': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
+          '2': { name: 'EA FC 25', slug: 'ea-fc' },
+          '3': { name: 'Valorant', slug: 'valorant' },
+          '4': { name: 'COD Mobile', slug: 'cod-mobile' },
+          '5': { name: 'Fortnite', slug: 'fortnite' },
+          '6': { name: 'League of Legends', slug: 'lol' },
+          'pubg-mobile': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
+          'ea-fc': { name: 'EA FC 25', slug: 'ea-fc' },
+          'valorant': { name: 'Valorant', slug: 'valorant' },
+          'cod-mobile': { name: 'COD Mobile', slug: 'cod-mobile' },
+          'fortnite': { name: 'Fortnite', slug: 'fortnite' },
+          'lol': { name: 'League of Legends', slug: 'lol' }
+        };
+        
+        const gameInfo = gameMapping[tournament.game_id] || { name: 'Unknown Game', slug: 'unknown' };
+        
         return {
           success: true,
           tournament: {
             ...tournament,
-            game_name: tournament.game_id === '1' ? 'PUBG Mobile' :
-                       tournament.game_id === '2' ? 'EA FC' :
-                       tournament.game_id === '3' ? 'Valorant' :
-                       tournament.game_id === '4' ? 'COD Mobile' :
-                       tournament.game_id === '5' ? 'Fortnite' :
-                       tournament.game_id === '6' ? 'League of Legends' :
-                       'Unknown Game',
-            game_slug: tournament.game_id === '1' ? 'pubg-mobile' :
-                       tournament.game_id === '2' ? 'ea-fc' :
-                       tournament.game_id === '3' ? 'valorant' :
-                       tournament.game_id === '4' ? 'cod-mobile' :
-                       tournament.game_id === '5' ? 'fortnite' :
-                       tournament.game_id === '6' ? 'league-of-legends' :
-                       'unknown',
+            game_name: gameInfo.name,
+            game_slug: gameInfo.slug,
             creator_username: null,
             creator_avatar: null,
             user_registration: null,
@@ -122,14 +128,14 @@ export const tournamentService = {
         if (gameFilter && gameFilter !== 'all') {
           console.log("New List API: Filtering by game", { gameFilter, before: filteredTournaments.length });
           
-          // Basic game mapping
+          // Comprehensive game mapping for both slug and numeric formats
           const gameMapping: Record<string, string[]> = {
-            'pubg-mobile': ['1'],
-            'ea-fc': ['2'],
-            'valorant': ['3'],
-            'cod-mobile': ['4'],
-            'fortnite': ['5'],
-            'league-of-legends': ['6']
+            'pubg-mobile': ['1', 'pubg-mobile'],
+            'ea-fc': ['2', 'ea-fc'],
+            'valorant': ['3', 'valorant'],
+            'cod-mobile': ['4', 'cod-mobile'],
+            'fortnite': ['5', 'fortnite'],
+            'lol': ['6', 'lol']
           };
           
           const gameIds = gameMapping[gameFilter] || [];
@@ -138,24 +144,32 @@ export const tournamentService = {
           console.log("New List API: Filtered", { gameFilter, after: filteredTournaments.length });
         }
         
-        // Add basic game info
-        const tournamentsWithGames = filteredTournaments.map(tournament => ({
-          ...tournament,
-          game_name: tournament.game_id === '1' ? 'PUBG Mobile' :
-                     tournament.game_id === '2' ? 'EA FC' :
-                     tournament.game_id === '3' ? 'Valorant' :
-                     tournament.game_id === '4' ? 'COD Mobile' :
-                     tournament.game_id === '5' ? 'Fortnite' :
-                     tournament.game_id === '6' ? 'League of Legends' :
-                     'Unknown Game',
-          game_slug: tournament.game_id === '1' ? 'pubg-mobile' :
-                     tournament.game_id === '2' ? 'ea-fc' :
-                     tournament.game_id === '3' ? 'valorant' :
-                     tournament.game_id === '4' ? 'cod-mobile' :
-                     tournament.game_id === '5' ? 'fortnite' :
-                     tournament.game_id === '6' ? 'league-of-legends' :
-                     'unknown'
-        }));
+        // Add basic game info - handle both slug and numeric formats
+        const tournamentsWithGames = filteredTournaments.map(tournament => {
+          const gameId = tournament.game_id;
+          
+          // Mapping for both slug and numeric formats
+          const gameInfo = {
+            '1': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
+            '2': { name: 'EA FC 25', slug: 'ea-fc' },
+            '3': { name: 'Valorant', slug: 'valorant' },
+            '4': { name: 'COD Mobile', slug: 'cod-mobile' },
+            '5': { name: 'Fortnite', slug: 'fortnite' },
+            '6': { name: 'League of Legends', slug: 'lol' },
+            'pubg-mobile': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
+            'ea-fc': { name: 'EA FC 25', slug: 'ea-fc' },
+            'valorant': { name: 'Valorant', slug: 'valorant' },
+            'cod-mobile': { name: 'COD Mobile', slug: 'cod-mobile' },
+            'fortnite': { name: 'Fortnite', slug: 'fortnite' },
+            'lol': { name: 'League of Legends', slug: 'lol' }
+          }[gameId] || { name: 'Unknown Game', slug: 'unknown' };
+          
+          return {
+            ...tournament,
+            game_name: gameInfo.name,
+            game_slug: gameInfo.slug
+          };
+        });
         
         console.log("New List API: SUCCESS", { count: tournamentsWithGames.length });
         

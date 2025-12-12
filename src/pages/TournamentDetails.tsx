@@ -342,11 +342,27 @@ const TournamentDetails = () => {
                   className="font-gaming border-border hover:border-primary/50"
                   onClick={() => {
                     console.log('Create Team clicked for tournament', tournament._row_id);
-                    toast({
-                      title: "Team Creation",
-                      description: "Team creation page coming soon! For now, join as an individual.",
-                      variant: "default"
-                    });
+                    
+                    // Show helpful team creation info
+                    if (canJoin) {
+                      toast({
+                        title: "💬 Team Registration",
+                        description: "Team creation is coming soon! For now, join individually and we'll match you with teammates or contact your team members to register separately.",
+                        duration: 5000
+                      });
+                    } else if (currentUserRegistered) {
+                      toast({
+                        title: "Already Registered",
+                        description: "You're already registered for this tournament.",
+                        variant: "default"
+                      });
+                    } else {
+                      toast({
+                        title: "Registration Closed", 
+                        description: "Team registration is not available for this tournament.",
+                        variant: "destructive"
+                      });
+                    }
                   }}
                 >
                   <Users className="w-5 h-5 mr-2" />
