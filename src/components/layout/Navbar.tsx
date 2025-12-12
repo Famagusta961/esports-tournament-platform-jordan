@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield } from 'lucide-react';
+import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
@@ -51,6 +51,7 @@ const Navbar = () => {
   }, []);
 
   const navLinks = [
+    { name: 'Home', href: '/', icon: Home },
     { name: 'Tournaments', href: '/tournaments', icon: Trophy },
     { name: 'Games', href: '/games', icon: Gamepad2 },
     { name: 'Leaderboard', href: '/leaderboard', icon: Users },
@@ -64,7 +65,7 @@ const Navbar = () => {
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          {/* Logo */}
+          {/* Logo - Hidden on mobile since we have Home button */}
           <Link to="/" className="flex items-center group hidden lg:flex">
             <div className="relative">
               <img 
