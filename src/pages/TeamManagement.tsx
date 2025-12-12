@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Crown, UserX, Shield, Settings, Eye, Edit, MoreHorizontal } from 'lucide-react';
+import EditTeamModal from '@/components/teams/EditTeamModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +54,8 @@ const TeamManagement = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeams, setMyTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [editTeam, setEditTeam] = useState<Team | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [createFormData, setCreateFormData] = useState({
     name: '',
@@ -384,7 +387,10 @@ const TeamManagement = () => {
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Team Page
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => {/* Edit team */}}>
+                                <DropdownMenuItem onClick={() => {
+                                  setEditTeam(team);
+                                  setShowEditModal(true);
+                                }}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Team
                                 </DropdownMenuItem>
@@ -532,6 +538,17 @@ const TeamManagement = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Edit Team Modal */}
+          <EditTeamModal
+            team={editTeam}
+            isOpen={showEditModal}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditTeam(null);
+            }}
+            onUpdate={loadTeams}
+          />
 
           {/* Create Team Modal */}
           {showCreateForm && (
