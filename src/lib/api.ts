@@ -844,6 +844,19 @@ export const teamService = {
     }
   },
 
+  // Delete team - captain only
+  deleteTeam: async (teamId: number) => {
+    try {
+      const response = await functions.post('team-management', {
+        action: 'delete_team',
+        team_id: teamId
+      });
+      return response;
+    } catch (error) {
+      handleApiError(error, 'Failed to delete team');
+    }
+  },
+
   // Get team by ID
   getTeamById: async (teamId: number) => {
     try {

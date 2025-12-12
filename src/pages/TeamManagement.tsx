@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Crown, UserX, Shield, Settings, Eye, Edit, MoreHorizontal } from 'lucide-react';
+import { Plus, Users, Crown, UserX, Shield, Settings, Eye, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 import EditTeamModal from '@/components/teams/EditTeamModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -279,6 +279,45 @@ const TeamManagement = () => {
     });
   };
 
+  const handleDeleteTeam = async (team: Team) => {
+    if (!confirm(`Are you sure you want to delete "${team.name}"? This action cannot be undone and will remove all team members permanently.`)) {
+      return;
+    }
+
+    try {
+      const result = await teamService.deleteTeam(team._row_id);
+      
+      if (result && result.success) {
+        toast({
+          title: "Team Deleted Successfully",
+          description: result.message || `"${team.name}" has been deleted permanently.`,
+          duration: 5000
+        });
+        
+        // Reload teams list
+        loadTeams();
+        
+        // Close any open modals for this team
+        if (selectedTeam?._row_id === team._row_id) {
+          setSelectedTeam(null);
+        }
+        if (editTeam?._row_id === team._row_id) {
+          setEditTeam(null);
+          setShowEditModal(false);
+        }
+      } else {
+        throw new Error(result?.error || 'Failed to delete team');
+      }
+    } catch (error) {
+      console.error('Delete team error:', error);
+      toast({
+        title: "Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete team",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     const roleConfig = {
       captain: { label: 'Captain', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
@@ -402,6 +441,14 @@ const TeamManagement = () => {
                                 }}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Team
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteTeam(team)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Team
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
