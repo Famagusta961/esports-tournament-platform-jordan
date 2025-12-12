@@ -72,13 +72,16 @@ const GameImageManager = () => {
     setUploading(prev => ({ ...prev, [gameName]: true }));
     
     try {
-      // Generate filename from game name with timestamp to avoid caching
+      console.log(`Uploading image for ${gameName}:`, file.name);
+      
+      // Generate temporary filename from game name with timestamp to avoid caching
       const sanitizedGameName = gameName.replace(/[^a-zA-Z0-9]/g, '_');
       const fileExtension = file.name.split('.').pop();
       const timestamp = Date.now();
-      const fileName = `${sanitizedGameName}_${timestamp}.${fileExtension}`;
+      const tempFileName = `${sanitizedGameName}_temp_${timestamp}.${fileExtension}`;
       
-      const result = await content.uploadFile(file, '/content/games/', fileName);
+      console.log(`Uploading temporary file: ${tempFileName}`);
+      const result = await content.uploadFile(file, '/content/games/', tempFileName);
       
       // Update the game image mapping with cache-busting (pending change)
       const imageUrlWithTimestamp = result.contentUrl + `?t=${timestamp}`;
@@ -93,8 +96,10 @@ const GameImageManager = () => {
       
       toast({
         title: "Image uploaded!",
-        description: `${gameName} image has been uploaded. Click "Save Changes" to apply.`,
+        description: `${gameName} image has been uploaded. Click "Save Changes" to apply changes to tournament pages.`,
       });
+      
+      console.log(`Image uploaded successfully for ${gameName}: ${result.contentUrl}`);
     } catch (error) {
       console.error('Upload error:', error);
       toast({
@@ -138,38 +143,103 @@ const GameImageManager = () => {
     }
   };
 
+  // Mapping from game names to their expected standard filenames
+  const getStandardFilename = (gameName: string): string => {
+    const filenameMap: Record<string, string> = {
+      'EA FC 25': 'EA FC 25.jpg',
+      'PUBG Mobile': 'pubg-.jpg',
+      'Valorant': 'valorant-listing-scaled.jpg',
+      'League of Legends': 'league-of-legends-pc-game-cover.jpg',
+      'Rocket League': 'EGS_RocketLeague_PsyonixLLC_S1_2560x1440-4c231557ef0a0626fbb97e0bd137d837.jpg',
+      'Tekken 8': 'tekken-7-pc-game-steam-cover.jpg',
+      'Fortnite': 'fneco-2025-keyart-thumb-1920x1080-de84aedabf4d.jpg',
+      'COD Mobile': 'COD.jpg',
+    };
+    return filenameMap[gameName] || `${gameName.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
+  };
+
   const handleSaveChanges = async () => {
     if (!hasChanges) return;
     
     setSaving(true);
     
     try {
-      // Find and delete old images that have been replaced or removed
+      const updatedImages: typeof gameImages = {};
+      
+      // Process each game's image changes
       for (const [gameName, currentImage] of Object.entries(gameImages)) {
         const originalImage = originalGameImages[gameName as keyof typeof originalGameImages];
+        const standardFilename = getStandardFilename(gameName);
         
-        // If image was replaced or removed, delete the old file
-        if (originalImage && originalImage !== currentImage) {
+        console.log(`Processing ${gameName}: current=${currentImage}, original=${originalImage}`);
+        
+        if (currentImage && currentImage !== originalImage) {
+          // New image uploaded - need to copy/rename it to standard filename
+          try {
+            // Download the uploaded image content
+            const uploadedFileUrl = currentImage.split('?')[0]; // Remove cache-busting
+            const urlParts = uploadedFileUrl.split('/');
+            const uploadedFilename = urlParts[urlParts.length - 1];
+            
+            // Read the uploaded file (we need to get its content to copy it)
+            const response = await fetch(uploadedFileUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch uploaded image: ${response.statusText}`);
+            }
+            
+            const blob = await response.blob();
+            const file = new File([blob], standardFilename, { type: blob.type });
+            
+            // Upload with the standard filename
+            console.log(`Copying ${uploadedFilename} to ${standardFilename}`);
+            const result = await content.uploadFile(file, '/content/games/', standardFilename);
+            
+            // Update the image path to the standard filename (with cache-busting)
+            updatedImages[gameName as keyof typeof updatedImages] = result.contentUrl + `?t=${Date.now()}`;
+            
+            // Clean up the temporary uploaded file
+            try {
+              if (uploadedFilename) {
+                await content.deleteFile(`/content/games/${uploadedFilename}`);
+                console.log(`Cleaned up temporary file: ${uploadedFilename}`);
+              }
+            } catch (cleanupError) {
+              console.warn('Could not clean up temporary file:', cleanupError);
+            }
+            
+          } catch (copyError) {
+            console.error(`Failed to copy image for ${gameName}:`, copyError);
+            // Fall back to keeping the original if copy fails
+            updatedImages[gameName as keyof typeof updatedImages] = originalImage;
+          }
+        } else if (!currentImage && originalImage) {
+          // Image was deleted - remove the standard file
           try {
             const urlParts = originalImage.split('/');
             const oldFileName = urlParts[urlParts.length - 1];
             if (oldFileName) {
+              console.log(`Deleting standard file: ${oldFileName}`);
               await content.deleteFile(`/content/games/${oldFileName}`);
             }
           } catch (deleteError) {
-            console.warn('Could not delete old image:', deleteError);
+            console.warn('Could not delete standard image:', deleteError);
           }
+          // Don't add to updatedImages (it was deleted)
+        } else {
+          // No change - keep the original
+          updatedImages[gameName as keyof typeof updatedImages] = originalImage;
         }
       }
       
+      // Update both original and current state with the new standard filenames
+      Object.assign(originalGameImages, updatedImages);
+      setGameImages(updatedImages);
+      setHasChanges(false);
+      
       toast({
         title: "Changes saved!",
-        description: "All image changes have been applied successfully.",
+        description: "All image changes have been applied successfully. Images are now available on tournament pages.",
       });
-      
-      // Update the original images to match the current state
-      Object.assign(originalGameImages, gameImages);
-      setHasChanges(false);
       
     } catch (error) {
       console.error('Save error:', error);
