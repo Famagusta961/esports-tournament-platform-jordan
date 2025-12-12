@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Calendar, Users, Trophy, Clock, Loader2 } from 'lucide-react';
+import { Search, Calendar, Users, Trophy, Clock, Loader2, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useToast } from '@/hooks/use-toast';
+import { UnregisterConfirmDialog } from '@/components/ui/unregister-confirm-dialog';
 import { tournamentService, gameService } from '@/lib/api-new';
 import auth from '@/lib/shared/kliv-auth.js';
 
@@ -55,6 +56,7 @@ type Tournament = {
   game_name?: string;
   game_slug?: string;
   game_id?: number;
+  user_registered?: boolean; // Add this to track if current user is registered
 };
 
 type Game = {
@@ -70,6 +72,9 @@ const Tournaments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [joiningTournament, setJoiningTournament] = useState<number | null>(null);
+  const [unregisteringTournament, setUnregisteringTournament] = useState<number | null>(null);
+  const [showUnregisterDialog, setShowUnregisterDialog] = useState(false);
+  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [gameFilter, setGameFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -185,6 +190,71 @@ const Tournaments = () => {
     } finally {
       setJoiningTournament(null);
     }
+  };
+
+  const handleUnregisterTournament = async (tournamentId: number) => {
+    console.log(`UNREGISTER: Clicked tournament ${tournamentId} from list page`);
+    
+    // Check authentication first
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        console.log(`NOT AUTH → redirecting to login (no API call) for unregister tournament ${tournamentId}`);
+        window.location.href = '/login';
+        return;
+      }
+    } catch (error) {
+      console.log(`NOT AUTH → redirecting to login (no API call) for unregister tournament ${tournamentId} (caught error)`);
+      window.location.href = '/login';
+      return;
+    }
+    
+    console.log(`AUTH → calling unregister API for tournament ${tournamentId}`);
+    
+    // User is authenticated, proceed with tournament unregister
+    try {
+      setUnregisteringTournament(tournamentId);
+      const result = await tournamentService.unregister(tournamentId);
+      
+      if (result && result.success) {
+        const message = result.message || "You have been unregistered from the tournament";
+        toast({
+          title: "Successfully unregistered!",
+          description: message,
+        });
+        loadTournaments(); // Refresh the list
+        setShowUnregisterDialog(false);
+        setSelectedTournament(null);
+      } else {
+        throw new Error(result?.error || 'Failed to unregister from tournament');
+      }
+    } catch (error) {
+      console.error('Unregister tournament error:', error);
+      
+      // Show toast for all errors (including auth errors)
+      if (error instanceof Error) {
+        toast({
+          title: "Unregister failed",
+          description: error.message || "Failed to unregister from tournament",
+          variant: "destructive"
+        });
+      }
+      
+      // If it's an auth error, redirect to login
+      if (error instanceof Error && 
+          (error.message.includes('Authentication required') || 
+           error.message.includes('Unauthorized') ||
+           (error as { status?: number }).status === 401 || (error as { status?: number }).status === 403)) {
+        window.location.href = '/login';
+      }
+    } finally {
+      setUnregisteringTournament(null);
+    }
+  };
+
+  const openUnregisterDialog = (tournament: Tournament) => {
+    setSelectedTournament(tournament);
+    setShowUnregisterDialog(true);
   };
 
   const filteredTournaments = tournaments.filter((tournament) => {
@@ -328,16 +398,37 @@ const Tournaments = () => {
                           View Details
                         </Button>
                       </Link>
-                      {(tournament.status === 'registration' || tournament.status === 'draft') && tournament.current_players < tournament.max_players && (
+                      
+                      {/* Join/Unregister Button Logic */}
+                      {(tournament.status === 'registration' || tournament.status === 'draft') ? (
+                        tournament.user_registered ? (
+                          <Button 
+                            className="w-full font-gaming bg-success hover:bg-success/90"
+                            onClick={() => openUnregisterDialog(tournament)}
+                            disabled={unregisteringTournament === tournament._row_id}
+                          >
+                            <LogOut className="w-4 h-4 mr-2" />
+                            {unregisteringTournament === tournament._row_id ? 'Unregistering...' : 'Unregister'}
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="w-full font-gaming bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90"
+                            onClick={() => handleJoinTournament(tournament._row_id)}
+                            disabled={joiningTournament === tournament._row_id || tournament.current_players >= tournament.max_players}
+                          >
+                            {joiningTournament === tournament._row_id ? 'Joining...' : 'Join Tournament'}
+                          </Button>
+                        )
+                      ) : (
                         <Button 
-                          className="w-full font-gaming bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90"
-                          onClick={() => handleJoinTournament(tournament._row_id)}
-                          disabled={joiningTournament === tournament._row_id}
+                          className="w-full font-gaming bg-muted text-muted-foreground"
+                          disabled
                         >
-                          {joiningTournament === tournament._row_id ? 'Joining...' : 'Join Tournament'}
+                          Registration Closed
                         </Button>
                       )}
-                      {tournament.status === 'registration' && tournament.current_players >= tournament.max_players && (
+                      
+                      {tournament.status === 'registration' && tournament.current_players >= tournament.max_players && !tournament.user_registered && (
                         <Button 
                           className="w-full font-gaming bg-muted text-muted-foreground"
                           disabled
@@ -352,12 +443,22 @@ const Tournaments = () => {
             </div>
           )}
 
-          {!loading && !error && filteredTournaments.length === 0 && (
+        {!loading && !error && filteredTournaments.length === 0 && (
             <div className="text-center py-20">
               <Trophy className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
               <h3 className="font-display text-xl font-semibold mb-2">No Tournaments Found</h3>
               <p className="text-muted-foreground font-gaming">Try adjusting your filters</p>
             </div>
+          )}
+          {selectedTournament && (
+            <UnregisterConfirmDialog
+              open={showUnregisterDialog}
+              onOpenChange={setShowUnregisterDialog}
+              onConfirm={() => handleUnregisterTournament(selectedTournament._row_id)}
+              tournamentTitle={selectedTournament.title}
+              entryFee={selectedTournament.entry_fee || 0}
+              isUnregistering={unregisteringTournament === selectedTournament._row_id}
+            />
           )}
         </div>
       </div>

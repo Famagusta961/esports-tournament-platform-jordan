@@ -1,52 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Calendar, Users, Trophy, Clock, MapPin, Share2, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Users, Trophy, Clock, MapPin, Share2, ArrowLeft, CheckCircle, AlertCircle, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Layout from '@/components/layout/Layout';
 import { useToast } from '@/hooks/use-toast';
+import { UnregisterConfirmDialog } from '@/components/ui/unregister-confirm-dialog';
 import { tournamentService } from '@/lib/api-new';
 import auth from '@/lib/shared/kliv-auth.js';
-
-const mockTournament = {
-  id: '1',
-  title: 'PUBG Mobile Championship',
-  game: 'PUBG Mobile',
-  gameColor: 'from-yellow-500 to-orange-600',
-  prizePool: '500 JD',
-  prizeDistribution: [
-    { place: '1st', amount: '250 JD' },
-    { place: '2nd', amount: '150 JD' },
-    { place: '3rd', amount: '75 JD' },
-    { place: '4th', amount: '25 JD' },
-  ],
-  entryFee: '5 JD',
-  format: 'Squad',
-  formatType: 'Single Elimination',
-  maxPlayers: 100,
-  currentPlayers: 76,
-  startDate: '2024-01-15',
-  startTime: '18:00',
-  registrationDeadline: '2024-01-14',
-  status: 'registration',
-  platform: 'Mobile',
-  description: 'Join the biggest PUBG Mobile tournament in Jordan! Gather your squad and compete for glory and prizes. This is a squad-based competition featuring the best teams in the region.',
-  rules: [
-    'All players must be 16 years or older',
-    'Each team must have exactly 4 players',
-    'No emulators allowed - mobile only',
-    'Match screenshots required for result verification',
-    'Admin decisions are final',
-  ],
-  organizer: 'ArenaJo Official',
-  participants: [
-    { id: '1', name: 'Team Alpha', avatar: 'A' },
-    { id: '2', name: 'Phoenix Squad', avatar: 'P' },
-    { id: '3', name: 'Jordan Warriors', avatar: 'J' },
-    { id: '4', name: 'Desert Eagles', avatar: 'D' },
-  ],
-};
 
 type TournamentDetail = {
   _row_id: number;
@@ -76,6 +38,8 @@ const TournamentDetails = () => {
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [unregistering, setUnregistering] = useState(false);
+  const [showUnregisterDialog, setShowUnregisterDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -175,7 +139,7 @@ const TournamentDetails = () => {
       if (error instanceof Error && 
           !error.message.includes('Authentication required') && 
           !error.message.includes('Unauthorized') &&
-          error.status !== 401 && error.status !== 403) {
+          (error as { status?: number }).status !== 401 && (error as { status?: number }).status !== 403) {
         toast({
           title: "Registration failed",
           description: error.message || "Failed to join tournament",
@@ -187,7 +151,7 @@ const TournamentDetails = () => {
       if (error instanceof Error && 
           (error.message.includes('Authentication required') || 
            error.message.includes('Unauthorized') ||
-           error.status === 401 || error.status === 403)) {
+           (error as { status?: number }).status === 401 || (error as { status?: number }).status === 403)) {
         sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
         sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
         navigate('/login');
@@ -195,6 +159,72 @@ const TournamentDetails = () => {
     } finally {
       setJoining(false);
     }
+  };
+
+  const handleUnregisterTournament = async () => {
+    if (!tournament) return;
+    
+    console.log(`UNREGISTER: Clicked tournament ${tournament._row_id} from details page`);
+    
+    // Check authentication first
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        console.log(`NOT AUTH → redirecting to login (no API call) for unregister tournament ${tournament._row_id}`);
+        navigate('/login');
+        return;
+      }
+    } catch (error) {
+      console.log(`NOT AUTH → redirecting to login (no API call) for unregister tournament ${tournament._row_id} (caught error)`);
+      navigate('/login');
+      return;
+    }
+    
+    console.log(`AUTH → calling unregister API for tournament ${tournament._row_id}`);
+    
+    // User is authenticated, proceed with tournament unregister
+    try {
+      setUnregistering(true);
+      const result = await tournamentService.unregister(tournament._row_id);
+      
+      if (result && result.success) {
+        const message = result.message || "You have been unregistered from the tournament";
+        toast({
+          title: "Successfully unregistered!",
+          description: message,
+        });
+        // Reload tournament data to update player count and registration status
+        loadTournament(tournament._row_id);
+        setShowUnregisterDialog(false);
+      } else {
+        throw new Error(result?.error || 'Failed to unregister from tournament');
+      }
+    } catch (error) {
+      console.error('Unregister tournament error:', error);
+      
+      // Show toast for all errors (including auth errors)
+      if (error instanceof Error) {
+        toast({
+          title: "Unregister failed",
+          description: error.message || "Failed to unregister from tournament",
+          variant: "destructive"
+        });
+      }
+      
+      // If it's an auth error, redirect to login
+      if (error instanceof Error && 
+          (error.message.includes('Authentication required') || 
+           error.message.includes('Unauthorized') ||
+           (error as { status?: number }).status === 401 || (error as { status?: number }).status === 403)) {
+        navigate('/login');
+      }
+    } finally {
+      setUnregistering(false);
+    }
+  };
+
+  const openUnregisterDialog = () => {
+    setShowUnregisterDialog(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -261,6 +291,9 @@ const TournamentDetails = () => {
   const canJoin = (tournament.status === 'registration' || tournament.status === 'draft') && 
                    tournament.current_players < tournament.max_players && 
                    !currentUserRegistered;
+  
+  const canUnregister = (tournament.status === 'registration' || tournament.status === 'draft') && 
+                        currentUserRegistered;
 
   return (
     <Layout>
@@ -344,13 +377,29 @@ const TournamentDetails = () => {
                 </div>
               </div>
 
-              {/* Join Button */}
+              {/* Join/Unregister Button */}
               <div className="mt-6 flex flex-col sm:flex-row gap-4">
                 {currentUserRegistered || (tournament.user_registration && tournament.user_registration.registered) ? (
-                  <Button size="lg" disabled className="flex-1 font-gaming text-lg bg-muted text-muted-foreground">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    You are registered
-                  </Button>
+                  <>
+                    <Button 
+                      size="lg" 
+                      className="flex-1 font-gaming text-lg bg-success hover:bg-success/90"
+                      onClick={openUnregisterDialog}
+                      disabled={!canUnregister || unregistering}
+                    >
+                      <LogOut className="w-5 h-5 mr-2" />
+                      {unregistering ? 'Unregistering...' : canUnregister ? 'Unregister' : 'Cannot Unregister'}
+                    </Button>
+                    <Button 
+                      size="lg" 
+                      variant="outline" 
+                      disabled
+                      className="flex-1 font-gaming border-border text-muted-foreground"
+                    >
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Registered
+                    </Button>
+                  </>
                 ) : (
                   <Button 
                     size="lg" 
@@ -362,51 +411,64 @@ const TournamentDetails = () => {
                     {joining ? 'Joining...' : canJoin ? 'Join Tournament' : 'Registration Closed'}
                   </Button>
                 )}
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  className="font-gaming border-border hover:border-primary/50"
-                  onClick={() => {
-                    console.log('Create Team clicked for tournament', tournament._row_id);
-                    
-                    if (currentUserRegistered) {
-                      toast({
-                        title: "Already Registered",
-                        description: "You're already registered for this tournament.",
-                        variant: "default"
-                      });
-                    } else if (canJoin) {
-                      // Store tournament context so we can show relevant message after team creation
-                      sessionStorage.setItem('tournamentContext', JSON.stringify({
-                        id: tournament._row_id,
-                        title: tournament.title,
-                        game_name: tournament.game_name
-                      }));
-                      sessionStorage.setItem('redirectToTournamentAfterTeamCreation', `/tournaments/${tournament._row_id}`);
+                
+                {!currentUserRegistered && (
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="font-gaming border-border hover:border-primary/50"
+                    onClick={() => {
+                      console.log('Create Team clicked for tournament', tournament._row_id);
                       
-                      toast({
-                        title: "👥 Team Creation",
-                        description: "Opening team creation page...",
-                        duration: 2000
-                      });
-                      
-                      // Navigate to team management page which has team creation functionality
-                      setTimeout(() => {
-                        navigate('/teams');
-                      }, 500);
-                    } else {
-                      toast({
-                        title: "Registration Closed", 
-                        description: "Team registration is not available for this tournament.",
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                >
-                  <Users className="w-5 h-5 mr-2" />
-                  Create Team
-                </Button>
+                      if (currentUserRegistered) {
+                        toast({
+                          title: "Already Registered",
+                          description: "You're already registered for this tournament.",
+                          variant: "default"
+                        });
+                      } else if (canJoin) {
+                        // Store tournament context so we can show relevant message after team creation
+                        sessionStorage.setItem('tournamentContext', JSON.stringify({
+                          id: tournament._row_id,
+                          title: tournament.title,
+                          game_name: tournament.game_name
+                        }));
+                        sessionStorage.setItem('redirectToTournamentAfterTeamCreation', `/tournaments/${tournament._row_id}`);
+                        
+                        toast({
+                          title: "👥 Team Creation",
+                          description: "Opening team creation page...",
+                          duration: 2000
+                        });
+                        
+                        // Navigate to team management page which has team creation functionality
+                        setTimeout(() => {
+                          navigate('/teams');
+                        }, 500);
+                      } else {
+                        toast({
+                          title: "Registration Closed", 
+                          description: "Team registration is not available for this tournament.",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    <Users className="w-5 h-5 mr-2" />
+                    Create Team
+                  </Button>
+                )}
               </div>
+              
+              {/* Unregister Confirmation Dialog */}
+              <UnregisterConfirmDialog
+                open={showUnregisterDialog}
+                onOpenChange={setShowUnregisterDialog}
+                onConfirm={handleUnregisterTournament}
+                tournamentTitle={tournament.title}
+                entryFee={tournament.entry_fee || 0}
+                isUnregistering={unregistering}
+              />
             </div>
           </div>
 
@@ -483,7 +545,7 @@ const TournamentDetails = () => {
                   </Badge>
                 </div>
                 
-{tournament.is_admin && tournament.registered_players && Array.isArray(tournament.registered_players) && tournament.registered_players.length > 0 ? (
+                {tournament.is_admin && tournament.registered_players && Array.isArray(tournament.registered_players) && tournament.registered_players.length > 0 ? (
                   <div className="space-y-3">
                     {tournament.registered_players.map((player: unknown) => {
                       const playerData = player as Record<string, unknown>;

@@ -207,5 +207,22 @@ export const tournamentService = {
       console.error("TournamentJoin: Error calling edge function", error);
       return { success: false, error: 'Authentication required' };
     }
+  },
+
+  // Unregister from tournament - using POST for edge function
+  unregister: async (tournamentId: number) => {
+    try {
+      console.log("TournamentUnregister: Calling edge function", { tournamentId });
+      
+      const response = await functions.post('tournament-unregister', { 
+        tournament_id: tournamentId 
+      });
+      
+      console.log("TournamentUnregister: Response", { response });
+      return response;
+    } catch (error) {
+      console.error("TournamentUnregister: Error calling edge function", error);
+      return { success: false, error: 'Failed to unregister from tournament' };
+    }
   }
 };
