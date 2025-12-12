@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ImageIcon } from 'lucide-react';
 
 const games = [
   {
@@ -9,6 +9,7 @@ const games = [
     color: 'from-yellow-500 to-orange-600',
     activeTournaments: 8,
     players: '5.2K',
+    image: '/content/games/pubg-.jpg',
   },
   {
     id: 'ea-fc',
@@ -17,6 +18,7 @@ const games = [
     color: 'from-green-500 to-emerald-600',
     activeTournaments: 12,
     players: '3.8K',
+    image: '/content/games/EA FC 25.jpg',
   },
   {
     id: 'valorant',
@@ -25,6 +27,7 @@ const games = [
     color: 'from-red-500 to-pink-600',
     activeTournaments: 5,
     players: '2.1K',
+    image: '/content/games/valorant-listing-scaled.jpg',
   },
   {
     id: 'cod-mobile',
@@ -33,6 +36,7 @@ const games = [
     color: 'from-orange-500 to-red-600',
     activeTournaments: 6,
     players: '4.5K',
+    image: '/content/games/COD.jpg',
   },
   {
     id: 'fortnite',
@@ -41,6 +45,7 @@ const games = [
     color: 'from-purple-500 to-blue-600',
     activeTournaments: 4,
     players: '1.8K',
+    image: '/content/games/fneco-2025-keyart-thumb-1920x1080-de84aedabf4d.jpg',
   },
   {
     id: 'lol',
@@ -49,6 +54,7 @@ const games = [
     color: 'from-blue-500 to-cyan-600',
     activeTournaments: 3,
     players: '1.2K',
+    image: '/content/games/league-of-legends-pc-game-cover.jpg',
   },
 ];
 
@@ -89,11 +95,18 @@ const GameCategories = () => {
               
               {/* Content */}
               <div className="relative p-4 sm:p-6 text-center">
-                {/* Game Icon Placeholder */}
-                <div className={`w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-xl bg-gradient-to-br ${game.color} flex items-center justify-center shadow-lg`}>
-                  <span className="font-display font-bold text-white text-lg sm:text-xl">
-                    {game.shortName}
-                  </span>
+                {/* Game Image */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
+                  {game.image ? (
+                    <img 
+                      src={game.image} 
+                      alt={game.name}
+                      className="w-full h-full object-cover"
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
+                  )}
                 </div>
                 
                 {/* Game Name */}
