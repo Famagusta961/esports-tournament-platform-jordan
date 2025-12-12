@@ -1,7 +1,8 @@
 // NEW WORKING API - Simple and reliable
 
-import auth, { db, functions } from '../shared/kliv-auth.js';
-import { content } from '../shared/kliv-content.js';
+import db from '@/lib/shared/kliv-database.js';
+import auth from '@/lib/shared/kliv-auth.js';
+import functions from '@/lib/shared/kliv-functions.js';
 
 // Error handling
 const handleApiError = (error: unknown, message: string) => {
