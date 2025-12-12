@@ -68,7 +68,7 @@ const Navbar = () => {
           <Link to="/" className="flex items-center group">
             <div className="relative">
               <img 
-                src="/arenajo-logo-rectangle.svg" 
+                src="/arenajo-logo-square.png" 
                 alt="ArenaJo" 
                 className="h-10 w-auto object-contain"
               />
