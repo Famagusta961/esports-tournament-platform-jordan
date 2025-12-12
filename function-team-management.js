@@ -55,12 +55,13 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ success: false, error: "Valid Team ID required" }, { status: 400 });
         }
 
-        // Get team details with captain username and member count
+        // Get team details with game name
         const teamStmt = conn.prepare(`
           SELECT t._row_id, t.name, t.tag, t.description, t.logo_url, t.captain_user_uuid,
-                 t.invite_code, t._created_at, t.game_id,
+                 t.invite_code, t._created_at, t.game_id, g.name as game_name,
                  (SELECT COUNT(*) FROM team_members_proper tm WHERE tm.team_row_id = t._row_id) as member_count
           FROM teams_proper t
+          LEFT JOIN games g ON t.game_id = g._row_id
           WHERE t._row_id = ?
         `);
         const team = await teamStmt.get([body.team_id]);
@@ -81,14 +82,24 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ success: false, error: "Access denied" }, { status: 403 });
         }
 
-        // Get team members (username mapping not available due to schema)
+        // Get captain info - use current user's name if they're the captain
+        let captainUsername = 'Team Captain';
+        if (team.captain_user_uuid === userUuid) {
+          captainUsername = userName;
+        }
+
+        // Get team members with better info
         const membersStmt = conn.prepare(`
-          SELECT tm.user_uuid, tm.role, tm._created_at as joined_at
+          SELECT tm.user_uuid, tm.role, tm._created_at as joined_at,
+                 CASE 
+                   WHEN tm.user_uuid = ? THEN ?
+                   ELSE 'Team Member'
+                 END as username
           FROM team_members_proper tm 
           WHERE tm.team_row_id = ?
           ORDER BY tm._created_at ASC
         `);
-        const members = await membersStmt.all([body.team_id]);
+        const members = await membersStmt.all([userUuid, userName, body.team_id]);
 
         const response = {
           success: true, 
@@ -99,28 +110,22 @@ export default async function(req: Request): Promise<Response> {
             description: team.description || '',
             logo_url: team.logo_url,
             captain_id: team.captain_user_uuid,
-            captain_username: 'Team Captain', // Fallback due to schema limitations
+            captain_username: captainUsername,
             created_at: team._created_at,
             member_count: team.member_count || 0,
             status: 'active',
-            game_name: team.game_id ? 'Unknown Game' : 'Not Set' // Will be updated below
+            game_name: team.game_name || 'Unknown Game'
           },
           members: (members || []).map(member => ({
             user_uuid: member.user_uuid,
             role: member.role,
             joined_at: member.joined_at,
-            username: 'Team Member' // Fallback due to schema limitations
+            username: member.username || 'Team Member'
           }))
         };
         
-        // Get actual game name if game_id is available
-        if (team.game_id) {
-          const gameStmt = conn.prepare("SELECT name FROM games WHERE _row_id = ?");
-          const game = await gameStmt.get([team.game_id]);
-          response.team.game_name = game ? game.name : 'Unknown Game';
-        }
-        
         console.log('get_team_by_id response:', JSON.stringify(response, null, 2));
+        console.log('Team game_id:', team.game_id, 'Game name:', team.game_name);
         return Response.json(response);
 
       case 'create':
