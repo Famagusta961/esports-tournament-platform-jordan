@@ -287,7 +287,7 @@ const TournamentDetails = () => {
                 </div>
               </div>
 
-              {/* Join Button */}
+              {/* Join/Create Team Button */}
               <div className="mt-6 flex flex-col sm:flex-row gap-4">
                 <Button 
                   size="lg" 
@@ -297,6 +297,45 @@ const TournamentDetails = () => {
                 >
                   <Trophy className="w-5 h-5 mr-2" />
                   {joining ? 'Joining...' : canJoin ? 'Join Tournament' : 'Registration Closed'}
+                </Button>
+                
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="font-gaming border-border hover:border-primary/50"
+                  onClick={() => {
+                    console.log('Create Team clicked for tournament', tournament._row_id);
+                    
+                    if (canJoin) {
+                      // Store tournament context so we can show relevant message after team creation
+                      sessionStorage.setItem('tournamentContext', JSON.stringify({
+                        id: tournament._row_id,
+                        title: tournament.title,
+                        game_name: tournament.game_name
+                      }));
+                      sessionStorage.setItem('redirectToTournamentAfterTeamCreation', `/tournaments/${tournament._row_id}`);
+                      
+                      toast({
+                        title: "👥 Team Creation",
+                        description: "Opening team creation page...",
+                        duration: 2000
+                      });
+                      
+                      // Navigate to team management page which has team creation functionality
+                      setTimeout(() => {
+                        navigate('/teams');
+                      }, 500);
+                    } else {
+                      toast({
+                        title: "Registration Closed", 
+                        description: "Team registration is not available for this tournament.",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                >
+                  <Users className="w-5 h-5 mr-2" />
+                  Create Team
                 </Button>
               </div>
             </div>
