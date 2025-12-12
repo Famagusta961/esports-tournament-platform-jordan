@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Layout from '@/components/layout/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { tournamentService } from '@/lib/api-new';
+import auth from '@/lib/shared/kliv-auth.js';
 
 const mockTournament = {
   id: '1',
@@ -126,6 +127,27 @@ const TournamentDetails = () => {
   const handleJoinTournament = async () => {
     if (!tournament) return;
     
+    // Check authentication first
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        // Store the tournament they were trying to join
+        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
+        sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
+        
+        // Redirect to login immediately without showing any toast
+        navigate('/login');
+        return;
+      }
+    } catch (error) {
+      // User is not authenticated
+      sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
+      sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
+      navigate('/login');
+      return;
+    }
+    
+    // User is authenticated, proceed with tournament join
     try {
       setJoining(true);
       const result = await tournamentService.join(tournament._row_id);
@@ -143,22 +165,27 @@ const TournamentDetails = () => {
     } catch (error) {
       console.error('Join tournament error:', error);
       
-      // Check if this is an authentication error
-      if (error instanceof Error && (error.message.includes('Authentication required') || error.message.includes('Unauthorized'))) {
-        // Store the tournament they were trying to join
-        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
-        sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
-        
-        // Redirect to login page immediately
-        navigate('/login');
-        return;
+      // Only show toast for non-authentication errors
+      if (error instanceof Error && 
+          !error.message.includes('Authentication required') && 
+          !error.message.includes('Unauthorized') &&
+          error.status !== 401 && error.status !== 403) {
+        toast({
+          title: "Registration failed",
+          description: error.message || "Failed to join tournament",
+          variant: "destructive"
+        });
       }
       
-      toast({
-        title: "Registration failed",
-        description: error instanceof Error ? error.message : "Failed to join tournament",
-        variant: "destructive"
-      });
+      // If we get here with an auth error, redirect to login
+      if (error instanceof Error && 
+          (error.message.includes('Authentication required') || 
+           error.message.includes('Unauthorized') ||
+           error.status === 401 || error.status === 403)) {
+        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
+        sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
+        navigate('/login');
+      }
     } finally {
       setJoining(false);
     }
