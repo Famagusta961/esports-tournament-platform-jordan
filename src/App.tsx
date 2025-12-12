@@ -16,6 +16,7 @@ import TournamentRegistration from "./pages/TournamentRegistration";
 import MatchSubmission from "./pages/MatchSubmission";
 import TeamManagement from "./pages/TeamManagement";
 import TeamPage from "./pages/TeamPage";
+import ImageTestPage from "./pages/ImageTestPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "@/components/layout/AdminLayout";
 import AdminIndex from "./pages/admin/Index";
@@ -48,6 +49,7 @@ const App = () => (
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/teams" element={<TeamManagement />} />
           <Route path="/teams/:id" element={<TeamPage />} />
+          <Route path="/image-test" element={<ImageTestPage />} />
           
           {/* Admin Routes - Protected Access */}
           <Route path="/admin" element={<AdminLayout />}>
