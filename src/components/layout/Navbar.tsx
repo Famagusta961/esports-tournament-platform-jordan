@@ -68,9 +68,10 @@ const Navbar = () => {
           <Link to="/" className="flex items-center group">
             <div className="relative">
               <img 
-                src="/arenajo-logo-rectangle-updated.png" 
+                src="/arenajo-logo-rectangle.png" 
                 alt="ArenaJo" 
                 className="h-10 w-auto object-contain"
+                style={{width: '160px'}}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
             </div>

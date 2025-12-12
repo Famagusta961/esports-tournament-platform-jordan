@@ -85,9 +85,10 @@ const Register = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center justify-center mb-8">
           <img 
-            src="/arenajo-logo-square-updated.png" 
+            src="/arenajo-logo-square.png" 
             alt="ArenaJo" 
             className="w-12 h-12 object-contain"
+            style={{width: '48px', height: '48px'}}
           />
         </Link>
 

@@ -45,9 +45,10 @@ const HeroSection = () => {
           <div className="flex flex-col items-center space-y-6 animate-slide-up">
             <div className="relative inline-flex items-center justify-center">
               <img 
-                src="/arenajo-logo-square-updated.png" 
+                src="/arenajo-logo-square.png" 
                 alt="ArenaJo" 
                 className="w-16 h-16 object-contain"
+                style={{width: '64px', height: '64px'}}
               />
               <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary blur-xl opacity-30" />
             </div>
