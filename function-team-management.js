@@ -1,23 +1,81 @@
-import { connect } from "npm:@tursodatabase/serverless";
-
-// TEAM-MANAGEMENT-DEPLOYMENT-V3: Working version restored
-// Only requires team name for creation - no game_id or captain_user_uuid requirements
 export default async function(req: Request): Promise<Response> {
-  const userUuid = req.headers.get("x-user-uuid");
-  const userName = req.headers.get("x-user-name") || 'Team Captain';
-  const dbUrl = req.headers.get("x-database-url");
-  const dbToken = req.headers.get("x-database-token");
-
-  if (!userUuid || userUuid === 'anonymous' || !dbUrl || !dbToken) {
-    return Response.json({ success: false, error: "Authentication required" }, { status: 401 });
-  }
-
   try {
-    const conn = connect({ url: dbUrl, authToken: dbToken });
+    const { connect } = await import("npm:@tursodatabase/serverless");
+    
+    // Get database connection info from headers (same as tournament functions)
+    const dbUrl = req.headers.get("x-database-url");
+    const dbToken = req.headers.get("x-database-token");
+    const userUuid = req.headers.get("x-user-uuid");
+    const userName = req.headers.get("x-user-name") || 'Team Captain';
+
+    if (!dbUrl || !dbToken || !userUuid || userUuid === 'anonymous') {
+      return Response.json({ success: false, error: "Authentication required" }, { status: 401 });
+    }
+
+    const conn = connect({
+      url: dbUrl,
+      authToken: dbToken
+    });
+
     const body = await req.json();
     const now = Math.floor(Date.now() / 1000);
 
     switch (body.action) {
+      case 'create':
+        // Validate team name (only requirement)
+        if (!body.name || body.name.length < 2) {
+          return Response.json({ success: false, error: "Team name required" }, { status: 400 });
+        }
+
+        // Check if team name already exists
+        const nameCheck = conn.prepare("SELECT _row_id FROM teams_proper WHERE name = ?");
+        const existingTeam = await nameCheck.get([body.name]);
+        if (existingTeam) {
+          return Response.json({ success: false, error: "Team name exists" }, { status: 400 });
+        }
+
+        // Generate invite code
+        const inviteCode = `TEAM_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        
+        // Create team
+        const createTeamStmt = conn.prepare(`
+          INSERT INTO teams_proper (name, description, tag, captain_user_uuid, invite_code, _created_by, _created_at, _updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        const teamResult = await createTeamStmt.run([
+          body.name, 
+          body.description || null, 
+          body.tag || null, 
+          userUuid, 
+          inviteCode, 
+          userUuid, 
+          now, 
+          now
+        ]);
+
+        const teamId = teamResult.lastInsertRowid;
+
+        // Add captain as team member
+        const createMemberStmt = conn.prepare(`
+          INSERT INTO team_members_proper (team_row_id, user_uuid, role, _created_by, _created_at, _updated_at)
+          VALUES (?, ?, 'captain', ?, ?, ?)
+        `);
+
+        await createMemberStmt.run([
+          teamId, 
+          userUuid, 
+          userUuid, 
+          now, 
+          now
+        ]);
+
+        return Response.json({ 
+          success: true, 
+          message: "Team created successfully",
+          team_id: Number(teamId)
+        });
+
       case 'get_user_teams':
         const stmt = conn.prepare(`
           SELECT t._row_id, t.name, t.tag, t.description, t.logo_url,
@@ -45,7 +103,6 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ success: false, error: "Valid Team ID required" }, { status: 400 });
         }
 
-        // Get team details
         const teamStmt = conn.prepare(`
           SELECT t._row_id, t.name, t.tag, t.description, t.logo_url, t.captain_user_uuid,
                  t.invite_code, t._created_at
@@ -58,19 +115,16 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ success: false, error: "Team not found" }, { status: 404 });
         }
 
-        // Check if user is captain or member of this team
         const membershipCheck = conn.prepare(`
           SELECT role FROM team_members_proper 
           WHERE team_row_id = ? AND user_uuid = ?
         `);
         const membership = await membershipCheck.get([body.team_id, userUuid]);
         
-        // Allow access if user is captain or member
         if (team.captain_user_uuid !== userUuid && !membership) {
           return Response.json({ success: false, error: "Access denied" }, { status: 403 });
         }
 
-        // Get team members
         const membersStmt = conn.prepare(`
           SELECT tm.user_uuid, tm.role, tm._created_at as joined_at
           FROM team_members_proper tm 
@@ -93,110 +147,6 @@ export default async function(req: Request): Promise<Response> {
             created_at: team._created_at,
             members: members || []
           }
-        });
-
-      case 'create':
-        if (!body.name || body.name.length < 2) {
-          return Response.json({ success: false, error: "Team name required" }, { status: 400 });
-        }
-
-        // Check if team name already exists
-        const nameCheck = conn.prepare("SELECT _row_id FROM teams_proper WHERE name = ?");
-        const existingTeam = await nameCheck.get([body.name]);
-        if (existingTeam) {
-          return Response.json({ success: false, error: "Team name exists" }, { status: 400 });
-        }
-
-        // Generate invite code
-        const inviteCode = `TEAM_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-        
-        // Create team first
-        const createTeamStmt = conn.prepare(`
-          INSERT INTO teams_proper (name, description, tag, captain_user_uuid, invite_code, _created_by, _created_at, _updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        
-        const teamResult = await createTeamStmt.run([
-          body.name, 
-          body.description || null, 
-          body.tag || null, 
-          userUuid, 
-          inviteCode, 
-          userUuid, 
-          now, 
-          now
-        ]);
-
-        const teamId = teamResult.lastInsertRowid;
-
-        // Create the captain member record
-        const createMemberStmt = conn.prepare(`
-          INSERT INTO team_members_proper (team_row_id, user_uuid, role, _created_by, _created_at, _updated_at)
-          VALUES (?, ?, 'captain', ?, ?, ?)
-        `);
-
-        await createMemberStmt.run([
-          teamId, 
-          userUuid, 
-          userUuid, 
-          now, 
-          now
-        ]);
-
-        return Response.json({ 
-          success: true, 
-          message: "Team created successfully",
-          team_id: Number(teamId)
-        });
-
-      case 'update_team':
-        if (!body.team_id || typeof body.team_id !== 'number' || body.team_id <= 0) {
-          return Response.json({ success: false, error: "Valid Team ID required" }, { status: 400 });
-        }
-        
-        if (!body.name || body.name.length < 2) {
-          return Response.json({ success: false, error: "Team name required" }, { status: 400 });
-        }
-
-        // Check if user is the team captain
-        const captainCheck = conn.prepare("SELECT captain_user_uuid FROM teams_proper WHERE _row_id = ?");
-        const teamToCheck = await captainCheck.get([body.team_id]);
-        
-        if (!teamToCheck) {
-          return Response.json({ success: false, error: "Team not found" }, { status: 404 });
-        }
-        
-        if (teamToCheck.captain_user_uuid !== userUuid) {
-          return Response.json({ success: false, error: "Only team captains can edit teams" }, { status: 403 });
-        }
-
-        // Check if name is being changed and if it conflicts with existing teams
-        if (body.name) {
-          const duplicateNameCheck = conn.prepare("SELECT _row_id FROM teams_proper WHERE name = ? AND _row_id != ?");
-          const duplicateTeam = await duplicateNameCheck.get([body.name, body.team_id]);
-          if (duplicateTeam) {
-            return Response.json({ success: false, error: "Team name already exists" }, { status: 400 });
-          }
-        }
-
-        // Update team
-        const updateStmt = conn.prepare(`
-          UPDATE teams_proper 
-          SET name = ?, description = ?, tag = ?, _updated_at = ?
-          WHERE _row_id = ? AND captain_user_uuid = ?
-        `);
-        await updateStmt.run([
-          body.name, 
-          body.description || null, 
-          body.tag || null, 
-          now, 
-          body.team_id, 
-          userUuid
-        ]);
-
-        return Response.json({ 
-          success: true, 
-          message: "Team updated successfully"
         });
 
       default:
