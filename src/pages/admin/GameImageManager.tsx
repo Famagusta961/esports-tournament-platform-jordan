@@ -49,7 +49,7 @@ const GameImageManager = () => {
     return cleanUrl1 === cleanUrl2;
   };
 
-  // Check if there are any pending changes
+// Check for changes
   const checkForChanges = (newImages: typeof gameImages) => {
     const changes = Object.keys(newImages).some(
       game => {
@@ -60,7 +60,13 @@ const GameImageManager = () => {
         return hasChanged;
       }
     );
+    console.log('=== CHANGE DETECTION ===');
     console.log('Has changes:', changes);
+    Object.entries(newImages).forEach(([game, img]) => {
+      const orig = originalGameImages[game as keyof typeof originalGameImages];
+      console.log(`${game}: ${!areImagesEqual(img, orig) ? '✓ CHANGED' : '○ same'}`);
+    });
+    console.log('===================');
     setHasChanges(changes);
   };
 
@@ -83,11 +89,11 @@ const GameImageManager = () => {
       console.log(`Uploading temporary file: ${tempFileName}`);
       const result = await content.uploadFile(file, '/content/games/', tempFileName);
       
-      // Update the game image mapping with cache-busting (pending change)
-      const imageUrlWithTimestamp = result.contentUrl + `?t=${timestamp}`;
+      // Update the game image mapping with temp file URL (pending change)
+      const tempImageUrl = `/content/games/${tempFileName}`;
       const newImages = {
         ...gameImages,
-        [gameName]: imageUrlWithTimestamp
+        [gameName]: tempImageUrl
       };
       setGameImages(newImages);
       
@@ -99,7 +105,7 @@ const GameImageManager = () => {
         description: `${gameName} image has been uploaded. Click "Save Changes" to apply changes to tournament pages.`,
       });
       
-      console.log(`Image uploaded successfully for ${gameName}: ${result.contentUrl}`);
+      console.log(`Image uploaded successfully for ${gameName}: ${tempImageUrl}`);
     } catch (error) {
       console.error('Upload error:', error);
       toast({
@@ -174,7 +180,7 @@ const GameImageManager = () => {
         
         console.log(`Processing ${gameName}: current=${currentImage}, original=${originalImage}`);
         
-        if (currentImage && currentImage !== originalImage) {
+        if (currentImage && !areImagesEqual(currentImage, originalImage)) {
           // New image uploaded - need to move/rename it to standard filename
           try {
             // Extract the temporary uploaded filename
