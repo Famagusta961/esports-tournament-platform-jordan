@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield, Home } from 'lucide-react';
+import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield, Home, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
@@ -100,12 +100,20 @@ const Navbar = () => {
             {user ? (
               <>
                 {isAdmin && (
-                  <Link to="/admin">
-                    <Button variant="ghost" size="sm" className="font-gaming">
-                      <Shield className="w-4 h-4 mr-2" />
-                      Admin
-                    </Button>
-                  </Link>
+                  <>
+                    <Link to="/image-test">
+                      <Button variant="ghost" size="sm" className="font-gaming">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Test Upload
+                      </Button>
+                    </Link>
+                    <Link to="/admin">
+                      <Button variant="ghost" size="sm" className="font-gaming">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Admin
+                      </Button>
+                    </Link>
+                  </>
                 )}
                 <Link to="/wallet">
                   <Button variant="ghost" size="sm" className="font-gaming">
