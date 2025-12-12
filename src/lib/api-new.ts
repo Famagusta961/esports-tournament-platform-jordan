@@ -15,7 +15,25 @@ const handleApiError = (error: unknown, message: string) => {
 export const gameService = {
   list: async () => {
     try {
+      console.log("GameService: Loading games...");
+      
+      // Try direct database fetch first
+      const response = await fetch('/api/v2/database/games?is_active=eq.1&order=name.asc');
+      
+      console.log("GameService: Raw response", { status: response.status });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("GameService: Games loaded", { count: data?.length, data });
+        
+        if (Array.isArray(data)) {
+          return data;
+        }
+      }
+      
+      // Fallback to Kliv database query
       const { data } = await db.query('games', { is_active: 'eq.1', order: 'name.asc' });
+      console.log("GameService: Fallback query result", { count: data?.length });
       return data || [];
     } catch (error) {
       console.error('Failed to fetch games:', error);

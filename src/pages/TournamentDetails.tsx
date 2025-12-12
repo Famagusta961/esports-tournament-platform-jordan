@@ -336,7 +336,19 @@ const TournamentDetails = () => {
                     {joining ? 'Joining...' : canJoin ? 'Join Tournament' : 'Registration Closed'}
                   </Button>
                 )}
-                <Button size="lg" variant="outline" className="font-gaming border-border hover:border-primary/50">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="font-gaming border-border hover:border-primary/50"
+                  onClick={() => {
+                    console.log('Create Team clicked for tournament', tournament._row_id);
+                    toast({
+                      title: "Team Creation",
+                      description: "Team creation page coming soon! For now, join as an individual.",
+                      variant: "default"
+                    });
+                  }}
+                >
                   <Users className="w-5 h-5 mr-2" />
                   Create Team
                 </Button>
