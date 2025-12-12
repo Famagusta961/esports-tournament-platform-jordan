@@ -25,13 +25,9 @@ type Team = {
 };
 
 type TeamMember = {
-  _row_id: number;
-  team_id: number;
-  user_id: string;
-  username: string;
+  user_uuid: string;
   role: 'captain' | 'member' | 'co_captain';
   joined_at: number;
-  status: string;
 };
 
 const TeamPage = () => {
@@ -285,13 +281,13 @@ const TeamPage = () => {
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-10 h-10">
                           <AvatarFallback>
-                            {member.user_uuid.substring(0, 2).toUpperCase()}
+                            {member.user_uuid.substring(0, 6).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{member.user_uuid}</div>
+                          <div className="font-medium">Team Member</div>
                           <div className="text-xs text-muted-foreground">
-                            Joined {formatDate(member.joined_at)}
+                            {member.user_uuid.substring(0, 8)}... • Joined {formatDate(member.joined_at)}
                           </div>
                         </div>
                       </div>
