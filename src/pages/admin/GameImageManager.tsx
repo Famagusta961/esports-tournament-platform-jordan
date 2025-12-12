@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Image, Camera, Trash2, Save } from 'lucide-react';
+import { Upload, Image, Camera, Trash2, Save, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Layout from '@/components/layout/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { content } from '@/lib/shared/kliv-content.js';
@@ -39,6 +40,11 @@ const GameImageManager = () => {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  
+  // General upload pool for flexible assignment
+  const [uploadedImages, setUploadedImages] = useState<Array<{id: string, url: string, name: string}>>([]);
+  const [showUploadPool, setShowUploadPool] = useState(false);
+  const uploadPoolInputRef = useRef<HTMLInputElement>(null);
 
   // Helper function to compare image URLs (ignoring cache-busting query params)
   const areImagesEqual = (url1: string | undefined, url2: string | undefined) => {
@@ -255,6 +261,94 @@ const GameImageManager = () => {
     });
   };
 
+  // Upload image to general pool
+  const handleUploadToPool = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    setUploading(prev => ({ ...prev, pool: true }));
+    
+    try {
+      console.log(`Uploading to pool:`, file.name);
+      
+      const fileExtension = file.name.split('.').pop();
+      const timestamp = Date.now();
+      const poolFileName = `pool_${timestamp}.${fileExtension}`;
+      
+      const result = await content.uploadFile(file, '/content/games/', poolFileName);
+      
+      const newPoolItem = {
+        id: poolFileName,
+        url: result.contentUrl,
+        name: file.name
+      };
+      
+      setUploadedImages(prev => [...prev, newPoolItem]);
+      
+      toast({
+        title: "Image uploaded to pool!",
+        description: "You can now assign this image to any game.",
+      });
+      
+    } catch (error) {
+      console.error('Pool upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload image",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(prev => ({ ...prev, pool: false }));
+      if (uploadPoolInputRef.current) {
+        uploadPoolInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Assign pool image to specific game
+  const handleAssignPoolImage = (poolImageId: string, gameName: string) => {
+    const poolImage = uploadedImages.find(img => img.id === poolImageId);
+    if (!poolImage) return;
+    
+    const newImages = {
+      ...gameImages,
+      [gameName]: poolImage.url
+    };
+    setGameImages(newImages);
+    checkForChanges(newImages);
+    
+    toast({
+      title: "Image assigned!",
+      description: `${poolImage.name} assigned to ${gameName}. Click "Save Changes" to apply.`,
+    });
+  };
+
+  // Delete image from pool
+  const handleDeletePoolImage = async (poolImageId: string) => {
+    try {
+      const image = uploadedImages.find(img => img.id === poolImageId);
+      if (!image) return;
+      
+      const filePath = `/content/games/${poolImageId}`;
+      await content.deleteFile(filePath);
+      
+      setUploadedImages(prev => prev.filter(img => img.id !== poolImageId));
+      
+      toast({
+        title: "Image deleted from pool",
+        description: "Image removed from upload pool.",
+      });
+    } catch (error) {
+      console.error('Pool delete error:', error);
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete image from pool",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Layout>
       <div className="min-h-screen bg-background">
@@ -323,12 +417,14 @@ const GameImageManager = () => {
                   🔧 Test Save UI
                 </Button>
               )}
-              <Link to="/image-test">
-                <Button variant="outline" disabled={saving}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload New Images
-                </Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                disabled={saving}
+                onClick={() => setShowUploadPool(!showUploadPool)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Upload Pool ({uploadedImages.length})
+              </Button>
             </div>
           </div>
         </div>
@@ -440,7 +536,98 @@ const GameImageManager = () => {
             </CardContent>
           </Card>
 
-  
+          {/* Upload Pool Section */}
+          {showUploadPool && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Image Upload Pool
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Upload images here first, then assign them to any game below.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {/* Upload button */}
+                <div className="mb-4">
+                  <input
+                    ref={uploadPoolInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadToPool}
+                    className="hidden"
+                    disabled={uploading.pool}
+                  />
+                  <Button 
+                    onClick={() => uploadPoolInputRef.current?.click()}
+                    disabled={uploading.pool}
+                  >
+                    {uploading.pool ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload to Pool
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Uploaded images */}
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {uploadedImages.map((image) => (
+                      <div key={image.id} className="text-center p-3 rounded-lg border border-border relative group">
+                        <img 
+                          src={image.url} 
+                          alt={image.name}
+                          className="w-full h-20 object-cover rounded mb-2"
+                        />
+                        <p className="text-xs font-medium truncate mb-2">{image.name}</p>
+                        
+                        {/* Assign dropdown */}
+                        <div className="mb-2">
+                          <Select onValueChange={(gameName) => handleAssignPoolImage(image.id, gameName)}>
+                            <SelectTrigger size="sm">
+                              <SelectValue placeholder="Assign to..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.keys(gameImages).map(gameName => (
+                                <SelectItem key={gameName} value={gameName}>
+                                  {gameName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleDeletePoolImage(image.id)}
+                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600"
+                          title="Delete from pool"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {uploadedImages.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No images in pool yet. Upload some images to assign to games.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
         </div>
       </div>
     </Layout>
