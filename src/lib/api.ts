@@ -753,8 +753,8 @@ export const teamService = {
     try {
       console.log('teamService.getUserTeams: Fetching user teams via edge function');
       
-      // Use the updated team-management function
-      const response = await functions.get('team-management', { 
+      // Use the updated team-management function with POST method
+      const response = await functions.post('team-management', { 
         action: 'get_user_teams' 
       });
       
