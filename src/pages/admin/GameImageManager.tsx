@@ -170,46 +170,32 @@ const GameImageManager = () => {
       for (const [gameName, currentImage] of Object.entries(gameImages)) {
         const originalImage = originalGameImages[gameName as keyof typeof originalGameImages];
         const standardFilename = getStandardFilename(gameName);
+        const standardPath = `/content/games/${standardFilename}`;
         
         console.log(`Processing ${gameName}: current=${currentImage}, original=${originalImage}`);
         
         if (currentImage && currentImage !== originalImage) {
-          // New image uploaded - need to copy/rename it to standard filename
+          // New image uploaded - need to move/rename it to standard filename
           try {
-            // Download the uploaded image content
+            // Extract the temporary uploaded filename
             const uploadedFileUrl = currentImage.split('?')[0]; // Remove cache-busting
             const urlParts = uploadedFileUrl.split('/');
-            const uploadedFilename = urlParts[urlParts.length - 1];
+            const tempFilename = urlParts[urlParts.length - 1];
+            const tempPath = `/content/games/${tempFilename}`;
             
-            // Read the uploaded file (we need to get its content to copy it)
-            const response = await fetch(uploadedFileUrl);
-            if (!response.ok) {
-              throw new Error(`Failed to fetch uploaded image: ${response.statusText}`);
-            }
+            console.log(`Moving ${tempFilename} to ${standardFilename}`);
             
-            const blob = await response.blob();
-            const file = new File([blob], standardFilename, { type: blob.type });
-            
-            // Upload with the standard filename
-            console.log(`Copying ${uploadedFilename} to ${standardFilename}`);
-            const result = await content.uploadFile(file, '/content/games/', standardFilename);
+            // Use moveFile to rename the uploaded file to the standard filename
+            await content.moveFile(tempPath, standardPath);
             
             // Update the image path to the standard filename (with cache-busting)
-            updatedImages[gameName as keyof typeof updatedImages] = result.contentUrl + `?t=${Date.now()}`;
+            updatedImages[gameName as keyof typeof updatedImages] = `${standardPath}?t=${Date.now()}`;
             
-            // Clean up the temporary uploaded file
-            try {
-              if (uploadedFilename) {
-                await content.deleteFile(`/content/games/${uploadedFilename}`);
-                console.log(`Cleaned up temporary file: ${uploadedFilename}`);
-              }
-            } catch (cleanupError) {
-              console.warn('Could not clean up temporary file:', cleanupError);
-            }
+            console.log(`Successfully moved ${tempFilename} to ${standardFilename}`);
             
-          } catch (copyError) {
-            console.error(`Failed to copy image for ${gameName}:`, copyError);
-            // Fall back to keeping the original if copy fails
+          } catch (moveError) {
+            console.error(`Failed to move image for ${gameName}:`, moveError);
+            // Fall back to keeping the original if move fails
             updatedImages[gameName as keyof typeof updatedImages] = originalImage;
           }
         } else if (!currentImage && originalImage) {
