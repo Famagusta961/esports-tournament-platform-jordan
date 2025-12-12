@@ -41,7 +41,7 @@ const TeamPage = () => {
   const [user, setUser] = useState<{ username: string; id: string; email: string } | null>(null);
 
   useEffect(() => {
-    console.log('TeamPage: teamId param', id);
+    console.log('TeamPage v2: teamId param', id);
     if (id) {
       console.log('TeamPage: useEffect triggered with teamId:', id);
       loadTeamData(parseInt(id));
