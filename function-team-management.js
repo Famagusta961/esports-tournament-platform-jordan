@@ -18,24 +18,36 @@ export default async function(req: Request): Promise<Response> {
     switch (body.action) {
       case 'get_user_teams':
         const stmt = conn.prepare(`
-          SELECT t._row_id, t.name, t.tag, t.description, t.logo_url,
+          SELECT t._row_id, t.name, t.tag, t.description, t.logo_url, t.game_id,
                  (SELECT COUNT(*) FROM team_members_proper tm WHERE tm.team_row_id = t._row_id) as member_count
           FROM teams_proper t WHERE t.captain_user_uuid = ?
         `);
         const result = await stmt.all([userUuid]);
-        const teams = (result || []).map(team => ({
-          _row_id: team._row_id,
-          name: team.name,
-          tag: team.tag || '',
-          description: team.description || '',
-          captain_id: userUuid,
-          captain_username: userName,
-          logo_url: team.logo_url,
-          created_at: now,
-          member_count: team.member_count || 0,
-          status: 'active',
-          game_name: 'Multi-game'
+        
+        // Fetch game names for all teams
+        const teams = await Promise.all((result || []).map(async (team) => {
+          let gameName = 'Not Set';
+          if (team.game_id) {
+            const gameStmt = conn.prepare("SELECT name FROM games WHERE _row_id = ?");
+            const game = await gameStmt.get([team.game_id]);
+            gameName = game ? game.name : 'Unknown Game';
+          }
+          
+          return {
+            _row_id: team._row_id,
+            name: team.name,
+            tag: team.tag || '',
+            description: team.description || '',
+            captain_id: userUuid,
+            captain_username: userName,
+            logo_url: team.logo_url,
+            created_at: team._created_at || now,
+            member_count: team.member_count || 0,
+            status: 'active',
+            game_name: gameName
+          };
         }));
+        
         return Response.json({ success: true, teams });
 
       case 'get_team_by_id':
@@ -166,10 +178,26 @@ export default async function(req: Request): Promise<Response> {
           return teamResult.lastInsertRowid;
         })();
 
+        // Get the created team with game name
+        const createdTeamStmt = conn.prepare(`
+          SELECT t._row_id, t.name, t.tag, t.description, t.game_id, g.name as game_name
+          FROM teams_proper t
+          LEFT JOIN games g ON t.game_id = g._row_id
+          WHERE t._row_id = ?
+        `);
+        const createdTeam = await createdTeamStmt.get([teamId]);
+        
         return Response.json({ 
           success: true, 
           message: "Team created successfully",
-          team_id: Number(teamId)
+          team_id: Number(teamId),
+          team: {
+            _row_id: createdTeam._row_id,
+            name: createdTeam.name,
+            tag: createdTeam.tag || '',
+            description: createdTeam.description || '',
+            game_name: createdTeam.game_name || 'Unknown Game'
+          }
         });
 
       case 'update_team':
