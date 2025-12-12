@@ -1,4 +1,5 @@
 export default async function(req: Request): Promise<Response> {
+  // VERSION MARKER: rollback_942cadd - This confirms production is running the correct rollback code
   try {
     const { connect } = await import("npm:@tursodatabase/serverless");
     
@@ -72,6 +73,7 @@ export default async function(req: Request): Promise<Response> {
 
         return Response.json({ 
           success: true, 
+          version: "rollback_942cadd",
           message: "Team created successfully",
           team_id: Number(teamId)
         });
@@ -96,7 +98,7 @@ export default async function(req: Request): Promise<Response> {
           status: 'active',
           game_name: 'Multi-game'
         }));
-        return Response.json({ success: true, teams });
+        return Response.json({ success: true, version: "rollback_942cadd", teams });
 
       case 'get_team_by_id':
         if (!body.team_id || typeof body.team_id !== 'number' || body.team_id <= 0) {
@@ -135,6 +137,7 @@ export default async function(req: Request): Promise<Response> {
 
         return Response.json({ 
           success: true, 
+          version: "rollback_942cadd",
           team: {
             _row_id: team._row_id,
             name: team.name,
