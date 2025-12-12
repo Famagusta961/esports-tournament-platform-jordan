@@ -71,8 +71,7 @@ const Navbar = () => {
               <img 
                 src="/arenajo-logo-rectangle.png" 
                 alt="ArenaJo" 
-                className="h-8 w-auto object-contain lg:h-10"
-                style={{width: '120px', maxWidth: '120px'}}
+                className="h-12 w-[180px] max-w-[180px] object-contain lg:h-10 lg:w-[120px] lg:max-w-[120px]"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
             </div>
