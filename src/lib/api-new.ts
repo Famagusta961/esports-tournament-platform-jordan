@@ -192,14 +192,19 @@ export const tournamentService = {
     }
   },
 
-  // Join tournament - keep existing logic
+  // Join tournament - using POST for edge function
   join: async (tournamentId: number) => {
     try {
-      const response = await functions.get('tournament-join', { tournamentId });
+      console.log("TournamentJoin: Calling edge function", { tournamentId });
+      
+      const response = await functions.post('tournament-join', { 
+        tournament_id: tournamentId 
+      });
+      
+      console.log("TournamentJoin: Response", { response });
       return response;
     } catch (error) {
-      console.log("Using database fallback for tournament registration");
-      // Database fallback logic here...
+      console.error("TournamentJoin: Error calling edge function", error);
       return { success: false, error: 'Authentication required' };
     }
   }
