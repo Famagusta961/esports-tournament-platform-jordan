@@ -1,5 +1,7 @@
 import { connect } from "npm:@tursodatabase/serverless";
 
+// TEAM-MANAGEMENT-DEPLOYMENT-V3: Working version restored
+// Only requires team name for creation - no game_id or captain_user_uuid requirements
 export default async function(req: Request): Promise<Response> {
   const userUuid = req.headers.get("x-user-uuid");
   const userName = req.headers.get("x-user-name") || 'Team Captain';
