@@ -42,7 +42,7 @@ const HeroSection = () => {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-20 md:py-20 py-12">
         <div className="text-center space-y-8">
           {/* Logo and Badge */}
-          <div className="flex flex-col items-center space-y-6 animate-slide-up">
+          <div className="flex flex-col items-center space-y-6 animate-slide-up hidden lg:block">
             <div className="relative inline-flex items-center justify-center">
               <img 
                 src="/arenajo-logo-square.png" 

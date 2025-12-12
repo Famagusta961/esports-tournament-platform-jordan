@@ -51,7 +51,7 @@ const Navbar = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Home', href: '/', icon: Home },
+    { name: 'Home', href: '/', icon: Home, hideOnDesktop: true },
     { name: 'Tournaments', href: '/tournaments', icon: Trophy },
     { name: 'Games', href: '/games', icon: Gamepad2 },
     { name: 'Leaderboard', href: '/leaderboard', icon: Users },
@@ -65,14 +65,14 @@ const Navbar = () => {
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          {/* Logo - Hidden on mobile since we have Home button */}
-          <Link to="/" className="flex items-center group hidden lg:flex">
+          {/* Logo - Shows on all devices */}
+          <Link to="/" className="flex items-center group">
             <div className="relative">
               <img 
                 src="/arenajo-logo-rectangle.png" 
                 alt="ArenaJo" 
-                className="h-10 w-auto object-contain"
-                style={{width: '160px'}}
+                className="h-8 w-auto object-contain lg:h-10"
+                style={{width: '120px', maxWidth: '120px'}}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
             </div>
@@ -80,7 +80,7 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-1">
-            {navLinks.map((link) => (
+            {navLinks.filter(link => !link.hideOnDesktop).map((link) => (
               <Link
                 key={link.name}
                 to={link.href}
