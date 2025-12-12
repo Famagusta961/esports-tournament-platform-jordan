@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -106,6 +106,15 @@ const Login = () => {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-[128px]" />
 
       <div className="relative w-full max-w-md">
+        {/* Close Button */}
+        <Link 
+          to="/" 
+          className="absolute -top-12 right-0 sm:-top-16 sm:-right-16 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Button variant="ghost" size="icon" className="w-10 h-10">
+            <X className="w-5 h-5" />
+          </Button>
+        </Link>
         {/* Logo */}
         <Link to="/" className="flex items-center justify-center mb-8">
           <img 
