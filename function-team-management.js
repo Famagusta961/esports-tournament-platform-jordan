@@ -85,7 +85,7 @@ export default async function(req: Request): Promise<Response> {
         }))
       };
 
-      console.log('TEAM-MGMT-DEPLOYED:', { teamId, game_name: response.team.game_name, member_count: response.members.length });
+      console.log('TEAM-MGMT-DEPLOYED-V4:', { teamId, game_name: response.team.game_name, game_id: team.game_id, member_count: response.members.length, timestamp: new Date().toISOString() });
       return Response.json(response);
     }
 
