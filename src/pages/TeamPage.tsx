@@ -19,9 +19,8 @@ type Team = {
   captain_username: string;
   logo_url?: string;
   created_at: number;
-  member_count: number;
-  status: string;
-  game_name?: string;
+  invite_code?: string;
+  members?: TeamMember[];
 };
 
 type TeamMember = {
@@ -70,7 +69,7 @@ const TeamPage = () => {
       
       if (result && result.team) {
         setTeam(result.team);
-        setMembers(result.members || []);
+        setMembers(result.team.members || []);
       } else {
         throw new Error('Team data not found');
       }

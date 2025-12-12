@@ -868,7 +868,7 @@ export const teamService = {
       if (response?.success) {
         return {
           team: response.team,
-          members: response.members || []  // Fixed: use response.members, not response.team?.members
+          members: response.team?.members || []  // Working version: members inside team object
         };
       }
       throw new Error(response?.error || 'Failed to load team');
