@@ -4,12 +4,14 @@ import { Upload, Image, Camera, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import AdminLayout from '@/components/layout/AdminLayout';
+import Layout from '@/components/layout/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { content } from '@/lib/shared/kliv-content.js';
 
 const GameImageManager = () => {
   const { toast } = useToast();
+  
+
 
   const [gameImages, setGameImages] = useState({
     'EA FC 25': '/content/games/EA FC 25.jpg',
@@ -24,10 +26,6 @@ const GameImageManager = () => {
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
-  
-
-  
-
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, gameName: string) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -38,7 +36,7 @@ const GameImageManager = () => {
     try {
       // Delete old image if it exists
       const currentImage = gameImages[gameName];
-      if (currentImage && currentImage !== gameImages[gameName]) {
+      if (currentImage) {
         try {
           const urlParts = currentImage.split('/');
           const oldFileName = urlParts[urlParts.length - 1];
@@ -119,11 +117,10 @@ const GameImageManager = () => {
     }
   };
 
-  
-
   return (
-    <AdminLayout>
-      <div>
+    <Layout>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -244,8 +241,9 @@ const GameImageManager = () => {
           </Card>
 
   
+        </div>
       </div>
-    </AdminLayout>
+    </Layout>
   );
 };
 
