@@ -40,11 +40,27 @@ const GameImageManager = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
+  // Helper function to compare image URLs (ignoring cache-busting query params)
+  const areImagesEqual = (url1: string | undefined, url2: string | undefined) => {
+    if (!url1 || !url2) return url1 === url2;
+    // Remove cache-busting query parameters for comparison
+    const cleanUrl1 = url1.split('?')[0];
+    const cleanUrl2 = url2.split('?')[0];
+    return cleanUrl1 === cleanUrl2;
+  };
+
   // Check if there are any pending changes
   const checkForChanges = (newImages: typeof gameImages) => {
     const changes = Object.keys(newImages).some(
-      game => newImages[game as keyof typeof newImages] !== originalGameImages[game as keyof typeof originalGameImages]
+      game => {
+        const newImage = newImages[game as keyof typeof newImages];
+        const originalImage = originalGameImages[game as keyof typeof originalGameImages];
+        const hasChanged = !areImagesEqual(newImage, originalImage);
+        console.log(`Game: ${game}, New: ${newImage}, Original: ${originalImage}, Changed: ${hasChanged}`);
+        return hasChanged;
+      }
     );
+    console.log('Has changes:', changes);
     setHasChanges(changes);
   };
 
@@ -192,6 +208,11 @@ const GameImageManager = () => {
               <p className="text-sm text-muted-foreground mt-2">
                 💡 Click any game image to upload or replace it. Hover and click the red button to delete.
               </p>
+              {/* Debug info */}
+              <div className="mt-2 text-xs text-gray-500 bg-gray-50 dark:bg-gray-900 p-2 rounded">
+                <p>Has changes: {hasChanges ? 'YES' : 'NO'}</p>
+                <p>Saving: {saving ? 'YES' : 'NO'}</p>
+              </div>
               {hasChanges && (
                 <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
@@ -229,6 +250,16 @@ const GameImageManager = () => {
                     Discard Changes
                   </Button>
                 </>
+              )}
+              {/* Debug button - always show for testing */}
+              {!hasChanges && (
+                <Button 
+                  onClick={() => setHasChanges(true)}
+                  variant="outline"
+                  className="text-xs"
+                >
+                  🔧 Test Save UI
+                </Button>
               )}
               <Link to="/image-test">
                 <Button variant="outline" disabled={saving}>
@@ -328,14 +359,14 @@ const GameImageManager = () => {
                         >
                           {imagePath ? "Available" : "Click to upload"}
                         </Badge>
-                        {hasChanges && imagePath !== originalGameImages[game as keyof typeof originalGameImages] && (
+                        {hasChanges && !areImagesEqual(imagePath, originalGameImages[game as keyof typeof originalGameImages]) && (
                           <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" title="Pending changes" />
                         )}
                       </div>
                       
                       {/* Upload hint */}
                       <p className="text-xs text-muted-foreground mt-2">
-                        {hasChanges && imagePath !== originalGameImages[game as keyof typeof originalGameImages] 
+                        {hasChanges && !areImagesEqual(imagePath, originalGameImages[game as keyof typeof originalGameImages]) 
                           ? "Pending: Save changes to apply" 
                           : (imagePath ? "Click to replace" : "Click to upload image")
                         }
