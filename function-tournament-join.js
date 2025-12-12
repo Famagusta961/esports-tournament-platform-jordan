@@ -54,10 +54,10 @@ export default async function(req: Request): Promise<Response> {
     // Check if already registered
     const existingRegQuery = `
       SELECT _row_id FROM tournament_players 
-      WHERE tournament_id = ? AND username = ?
+      WHERE tournament_row_id = ? AND user_uuid = ?
     `;
     const existingRegStmt = conn.prepare(existingRegQuery);
-    const existingReg = await existingRegStmt.get([tournament_id, user.username]);
+    const existingReg = await existingRegStmt.get([tournament_id, userUuid]);
 
     if (existingReg) {
       return Response.json({ error: "Already registered for this tournament" }, { status: 400 });
@@ -67,17 +67,15 @@ export default async function(req: Request): Promise<Response> {
     const now = Math.floor(Date.now() / 1000);
     const insertQuery = `
       INSERT INTO tournament_players (
-        tournament_id, username, team_id, payment_status, joined_at, _created_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        tournament_row_id, user_uuid, status, joined_at
+      ) VALUES (?, ?, ?, ?)
     `;
 
     const stmt = conn.prepare(insertQuery);
     await stmt.run([
       tournament_id,
-      user.username,
-      team_id || null,
-      tournament.entry_fee > 0 ? 'pending' : 'free',
-      now,
+      userUuid,
+      'registered',
       now
     ]);
 

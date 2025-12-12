@@ -80,19 +80,27 @@ export const tournamentService = {
         let userRegistration = null;
         try {
           const user = await auth.getUser();
+          console.log("API: Checking registration for user", { userUuid: user?.uuid, username: user?.username, tournamentId: id });
           if (user) {
             const registrationData = await db.query('tournament_players', {
-              tournament_id: `eq.${id}`,
-              username: `eq.${user.username}`,
+              tournament_row_id: `eq.${id}`,
+              user_uuid: `eq.${user.uuid}`,
               limit: 1
+            });
+            
+            console.log("API: Registration check result", { 
+              tournamentId: id,
+              userUuid: user.uuid,
+              registrationData: registrationData?.data,
+              count: registrationData?.data?.length
             });
             
             if (registrationData.data && registrationData.data.length > 0) {
               userRegistration = {
                 registered: true,
                 joined_at: registrationData.data[0].joined_at,
-                payment_status: registrationData.data[0].payment_status,
-                team_id: registrationData.data[0].team_id
+                status: registrationData.data[0].status,
+                _row_id: registrationData.data[0]._row_id
               };
             } else {
               userRegistration = {
@@ -200,8 +208,8 @@ export const tournamentService = {
               const user = await auth.getUser();
               if (user) {
                 const registrationData = await db.query('tournament_players', {
-                  tournament_id: `eq.${tournament._row_id}`,
-                  username: `eq.${user.username}`,
+                  tournament_row_id: `eq.${tournament._row_id}`,
+                  user_uuid: `eq.${user.uuid}`,
                   limit: 1
                 });
                 

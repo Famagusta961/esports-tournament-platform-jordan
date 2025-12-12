@@ -50,11 +50,11 @@ export default async function(req: Request): Promise<Response> {
 
     // Check if user is actually registered
     const existingRegQuery = `
-      SELECT _row_id, payment_status FROM tournament_players 
-      WHERE tournament_id = ? AND username = ?
+      SELECT _row_id, joined_at FROM tournament_players 
+      WHERE tournament_row_id = ? AND user_uuid = ?
     `;
     const existingRegStmt = conn.prepare(existingRegQuery);
-    const existingReg = await existingRegStmt.get([tournament_id, user.username]);
+    const existingReg = await existingRegStmt.get([tournament_id, userUuid]);
 
     if (!existingReg) {
       return Response.json({ 
@@ -63,12 +63,7 @@ export default async function(req: Request): Promise<Response> {
     }
 
     // Check for abuse prevention - prevent unregistering if just registered (cooldown period)
-    const cooldownQuery = `
-      SELECT joined_at FROM tournament_players 
-      WHERE tournament_id = ? AND username = ?
-    `;
-    const cooldownStmt = conn.prepare(cooldownQuery);
-    const cooldownResult = await cooldownStmt.get([tournament_id, user.username]);
+    const cooldownResult = existingReg; // We already have the joined_at
     
     if (cooldownResult) {
       const joinedAt = cooldownResult.joined_at;
@@ -92,10 +87,10 @@ export default async function(req: Request): Promise<Response> {
     // Remove registration
     const deleteQuery = `
       DELETE FROM tournament_players 
-      WHERE tournament_id = ? AND username = ?
+      WHERE tournament_row_id = ? AND user_uuid = ?
     `;
     const deleteStmt = conn.prepare(deleteQuery);
-    await deleteStmt.run([tournament_id, user.username]);
+    await deleteStmt.run([tournament_id, userUuid]);
 
     // Update tournament player count
     const updateQuery = "UPDATE tournaments SET current_players = current_players - 1 WHERE _row_id = ?";
