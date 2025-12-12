@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Image, Camera, Trash2 } from 'lucide-react';
+import { Upload, Image, Camera, Trash2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,8 +11,19 @@ import { content } from '@/lib/shared/kliv-content.js';
 const GameImageManager = () => {
   const { toast } = useToast();
   
-
-
+  // Store original game images
+  const [originalGameImages] = useState({
+    'EA FC 25': '/content/games/EA FC 25.jpg',
+    'PUBG Mobile': '/content/games/pubg-.jpg',
+    'Valorant': '/content/games/valorant-listing-scaled.jpg',
+    'League of Legends': '/content/games/league-of-legends-pc-game-cover.jpg',
+    'Rocket League': '/content/games/EGS_RocketLeague_PsyonixLLC_S1_2560x1440-4c231557ef0a0626fbb97e0bd137d837.jpg',
+    'Tekken 8': '/content/games/tekken-7-pc-game-steam-cover.jpg',
+    'Fortnite': '/content/games/fneco-2025-keyart-thumb-1920x1080-de84aedabf4d.jpg',
+    'COD Mobile': '/content/games/COD.jpg',
+  });
+  
+  // Current game images state (including pending changes)
   const [gameImages, setGameImages] = useState({
     'EA FC 25': '/content/games/EA FC 25.jpg',
     'PUBG Mobile': '/content/games/pubg-.jpg',
@@ -23,8 +34,19 @@ const GameImageManager = () => {
     'Fortnite': '/content/games/fneco-2025-keyart-thumb-1920x1080-de84aedabf4d.jpg',
     'COD Mobile': '/content/games/COD.jpg',
   });
+  
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
+  const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  // Check if there are any pending changes
+  const checkForChanges = (newImages: typeof gameImages) => {
+    const changes = Object.keys(newImages).some(
+      game => newImages[game as keyof typeof newImages] !== originalGameImages[game as keyof typeof originalGameImages]
+    );
+    setHasChanges(changes);
+  };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, gameName: string) => {
     const files = event.target.files;
@@ -34,20 +56,6 @@ const GameImageManager = () => {
     setUploading(prev => ({ ...prev, [gameName]: true }));
     
     try {
-      // Delete old image if it exists
-      const currentImage = gameImages[gameName];
-      if (currentImage) {
-        try {
-          const urlParts = currentImage.split('/');
-          const oldFileName = urlParts[urlParts.length - 1];
-          if (oldFileName) {
-            await content.deleteFile(`/content/games/${oldFileName}`);
-          }
-        } catch (deleteError) {
-          console.warn('Could not delete old image:', deleteError);
-        }
-      }
-      
       // Generate filename from game name with timestamp to avoid caching
       const sanitizedGameName = gameName.replace(/[^a-zA-Z0-9]/g, '_');
       const fileExtension = file.name.split('.').pop();
@@ -56,16 +64,20 @@ const GameImageManager = () => {
       
       const result = await content.uploadFile(file, '/content/games/', fileName);
       
-      // Update the game image mapping with cache-busting
+      // Update the game image mapping with cache-busting (pending change)
       const imageUrlWithTimestamp = result.contentUrl + `?t=${timestamp}`;
-      setGameImages(prev => ({
-        ...prev,
+      const newImages = {
+        ...gameImages,
         [gameName]: imageUrlWithTimestamp
-      }));
+      };
+      setGameImages(newImages);
+      
+      // Check for changes
+      checkForChanges(newImages);
       
       toast({
-        title: "Image updated!",
-        description: `${gameName} image has been updated successfully`,
+        title: "Image uploaded!",
+        description: `${gameName} image has been uploaded. Click "Save Changes" to apply.`,
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -88,24 +100,17 @@ const GameImageManager = () => {
     if (!currentImage) return;
 
     try {
-      // Extract filename from URL
-      const urlParts = currentImage.split('/');
-      const fileName = urlParts[urlParts.length - 1];
+      // Remove from game images mapping (pending change)
+      const newImages = { ...gameImages };
+      delete newImages[gameName as keyof typeof newImages];
+      setGameImages(newImages);
       
-      if (fileName) {
-        await content.deleteFile(`/content/games/${fileName}`);
-      }
-      
-      // Remove from game images mapping
-      setGameImages(prev => {
-        const newImages = { ...prev };
-        delete newImages[gameName as keyof typeof newImages];
-        return newImages;
-      });
+      // Check for changes
+      checkForChanges(newImages);
       
       toast({
-        title: "Image deleted",
-        description: `${gameName} image has been removed`,
+        title: "Image removed",
+        description: `${gameName} image has been removed. Click "Save Changes" to apply.`,
       });
     } catch (error) {
       console.error('Delete error:', error);
@@ -117,14 +122,69 @@ const GameImageManager = () => {
     }
   };
 
+  const handleSaveChanges = async () => {
+    if (!hasChanges) return;
+    
+    setSaving(true);
+    
+    try {
+      // Find and delete old images that have been replaced or removed
+      for (const [gameName, currentImage] of Object.entries(gameImages)) {
+        const originalImage = originalGameImages[gameName as keyof typeof originalGameImages];
+        
+        // If image was replaced or removed, delete the old file
+        if (originalImage && originalImage !== currentImage) {
+          try {
+            const urlParts = originalImage.split('/');
+            const oldFileName = urlParts[urlParts.length - 1];
+            if (oldFileName) {
+              await content.deleteFile(`/content/games/${oldFileName}`);
+            }
+          } catch (deleteError) {
+            console.warn('Could not delete old image:', deleteError);
+          }
+        }
+      }
+      
+      toast({
+        title: "Changes saved!",
+        description: "All image changes have been applied successfully.",
+      });
+      
+      // Update the original images to match the current state
+      Object.assign(originalGameImages, gameImages);
+      setHasChanges(false);
+      
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: "Save failed",
+        description: error instanceof Error ? error.message : "Failed to save changes",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    setGameImages({ ...originalGameImages });
+    setHasChanges(false);
+    
+    toast({
+      title: "Changes discarded",
+      description: "All pending changes have been reverted.",
+    });
+  };
+
   return (
     <Layout>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
               <h1 className="font-display text-3xl font-bold mb-2">Game Image Manager</h1>
               <p className="text-muted-foreground">
                 Manage which games have images assigned to them. Images are automatically displayed on tournament pages and game cards.
@@ -132,14 +192,51 @@ const GameImageManager = () => {
               <p className="text-sm text-muted-foreground mt-2">
                 💡 Click any game image to upload or replace it. Hover and click the red button to delete.
               </p>
+              {hasChanges && (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                    ⚠️ You have unsaved changes. Click "Save Changes" to apply them or "Discard" to revert.
+                  </p>
+                </div>
+              )}
             </div>
             
-            <Link to="/image-test">
-              <Button variant="outline">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload New Images
-              </Button>
-            </Link>
+            <div className="flex flex-col gap-2">
+              {hasChanges && (
+                <>
+                  <Button 
+                    onClick={handleSaveChanges} 
+                    disabled={saving}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleDiscardChanges}
+                    disabled={saving}
+                  >
+                    Discard Changes
+                  </Button>
+                </>
+              )}
+              <Link to="/image-test">
+                <Button variant="outline" disabled={saving}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload New Images
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -222,16 +319,26 @@ const GameImageManager = () => {
                       
                       {/* Game Info */}
                       <p className="font-gaming text-sm font-medium mb-1">{game}</p>
-                      <Badge 
-                        variant={imagePath ? "secondary" : "outline"} 
-                        className={imagePath ? "" : "text-muted-foreground"}
-                      >
-                        {imagePath ? "Available" : "Click to upload"}
-                      </Badge>
+                      
+                      {/* Status badge with pending indicator */}
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <Badge 
+                          variant={imagePath ? "secondary" : "outline"} 
+                          className={imagePath ? "" : "text-muted-foreground"}
+                        >
+                          {imagePath ? "Available" : "Click to upload"}
+                        </Badge>
+                        {hasChanges && imagePath !== originalGameImages[game as keyof typeof originalGameImages] && (
+                          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" title="Pending changes" />
+                        )}
+                      </div>
                       
                       {/* Upload hint */}
                       <p className="text-xs text-muted-foreground mt-2">
-                        {imagePath ? "Click to replace" : "Click to upload image"}
+                        {hasChanges && imagePath !== originalGameImages[game as keyof typeof originalGameImages] 
+                          ? "Pending: Save changes to apply" 
+                          : (imagePath ? "Click to replace" : "Click to upload image")
+                        }
                       </p>
                     </div>
                   );
