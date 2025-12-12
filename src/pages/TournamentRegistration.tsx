@@ -73,6 +73,14 @@ const TournamentRegistration = () => {
     try {
       const currentUser = await auth.getUser();
       setUser(currentUser);
+      
+      // Check if user came from a "join tournament" flow
+      const joinTournamentId = sessionStorage.getItem('joinTournamentAfterLogin');
+      if (joinTournamentId && id === joinTournamentId) {
+        // Clear it since we're on the registration page
+        sessionStorage.removeItem('joinTournamentAfterLogin');
+        sessionStorage.removeItem('redirectAfterLogin');
+      }
     } catch (error) {
       console.error('Failed to load user:', error);
     }
@@ -80,12 +88,20 @@ const TournamentRegistration = () => {
 
   const handleRegistration = async () => {
     if (!user) {
+      // Store the tournament they were trying to register for
+      sessionStorage.setItem('redirectAfterLogin', `/tournaments/${id}/register`);
+      sessionStorage.setItem('joinTournamentAfterLogin', id);
+      
       toast({
         title: "Authentication Required",
-        description: "Please login to register for this tournament",
+        description: "Please login to register for this tournament. Redirecting you to login...",
         variant: "destructive"
       });
-      navigate('/login');
+      
+      // Redirect to login page
+      setTimeout(() => {
+        navigate('/login');
+      }, 1000);
       return;
     }
 
@@ -304,7 +320,11 @@ const TournamentRegistration = () => {
                       <p className="text-muted-foreground mb-4">
                         You need to be logged in to register for this tournament
                       </p>
-                      <Button onClick={() => navigate('/login')}>
+                      <Button onClick={() => {
+                        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${id}/register`);
+                        sessionStorage.setItem('joinTournamentAfterLogin', id);
+                        navigate('/login');
+                      }}>
                         Sign In to Register
                       </Button>
                     </div>

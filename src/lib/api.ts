@@ -166,11 +166,17 @@ export const tournamentService = {
           // Build database query parameters
           const dbParams: Record<string, unknown> = {
             ...(params?.status && params.status !== 'all' && { status: 'eq.' + params.status }),
-            ...(params?.game && params.game !== 'all' && { 'game.slug': 'eq.' + params.game }),
             order: '_created_at.desc',
             limit: params?.limit || 20,
             offset: params?.offset || 0
           };
+          
+          // For game filtering, we need to handle it differently since games are joined
+          const gameFilter = params?.game;
+          if (gameFilter && gameFilter !== 'all') {
+            console.log('Applying game filter:', gameFilter);
+            // We'll filter after the join since joins with where clauses are complex
+          }
 
           // Don't show draft tournaments to public
           if (!params?.status || params.status === 'all') {
@@ -180,7 +186,7 @@ export const tournamentService = {
           const { data: tournaments } = await db.query('tournaments', dbParams);
 
           // Join with games data - handle both slug and numeric game_id
-          const tournamentsWithGames = await Promise.all(tournaments?.map(async (tournament) => {
+          let tournamentsWithGames = await Promise.all(tournaments?.map(async (tournament) => {
             let gameName = 'Unknown Game';
             let gameSlug = 'unknown';
             
@@ -215,6 +221,15 @@ export const tournamentService = {
               game_slug: gameSlug
             };
           }) || []);
+          
+          // Apply game filter after the join if specified
+          if (gameFilter && gameFilter !== 'all') {
+            console.log('Filtering tournaments by game slug:', gameFilter, 'before filter:', tournamentsWithGames.length);
+            tournamentsWithGames = tournamentsWithGames.filter(tournament => 
+              tournament.game_slug === gameFilter || tournament.game_name === gameFilter
+            );
+            console.log('After game filter:', tournamentsWithGames.length);
+          }
 
           return {
             success: true,

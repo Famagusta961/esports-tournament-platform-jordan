@@ -141,6 +141,26 @@ const TournamentDetails = () => {
       }
     } catch (error) {
       console.error('Join tournament error:', error);
+      
+      // Check if this is an authentication error
+      if (error instanceof Error && (error.message.includes('Authentication required') || error.message.includes('Unauthorized'))) {
+        // Store the tournament they were trying to join
+        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
+        sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
+        
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to join this tournament. Redirecting you to login...",
+          variant: "destructive"
+        });
+        
+        // Redirect to login page
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
+        return;
+      }
+      
       toast({
         title: "Registration failed",
         description: error instanceof Error ? error.message : "Failed to join tournament",

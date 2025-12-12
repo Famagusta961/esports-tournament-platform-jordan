@@ -22,7 +22,21 @@ const Login = () => {
         const user = await auth.getUser();
         if (user) {
           console.log('User already logged in, redirecting...', user.email);
-          navigate('/');
+          
+          // Check if user should be redirected to a specific tournament
+          const redirectTarget = sessionStorage.getItem('redirectAfterLogin');
+          const joinTournamentId = sessionStorage.getItem('joinTournamentAfterLogin');
+          
+          // Clear the stored values
+          sessionStorage.removeItem('redirectAfterLogin');
+          sessionStorage.removeItem('joinTournamentAfterLogin');
+          
+          if (redirectTarget) {
+            console.log('Redirecting to saved target:', redirectTarget);
+            navigate(redirectTarget);
+          } else {
+            navigate('/');
+          }
         }
       } catch (error) {
         console.log('No active session found');
@@ -55,7 +69,21 @@ const Login = () => {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      navigate('/');
+      
+      // Check if user should be redirected to a specific tournament
+      const redirectTarget = sessionStorage.getItem('redirectAfterLogin');
+      const joinTournamentId = sessionStorage.getItem('joinTournamentAfterLogin');
+      
+      // Clear the stored values
+      sessionStorage.removeItem('redirectAfterLogin');
+      sessionStorage.removeItem('joinTournamentAfterLogin');
+      
+      if (redirectTarget) {
+        console.log('Redirecting to saved target:', redirectTarget);
+        navigate(redirectTarget);
+      } else {
+        navigate('/');
+      }
     } catch (error) {
       console.error('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : "Invalid email or password.";

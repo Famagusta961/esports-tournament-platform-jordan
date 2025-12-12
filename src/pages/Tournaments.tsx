@@ -135,6 +135,26 @@ const Tournaments = () => {
       }
     } catch (error) {
       console.error('Error joining tournament:', error);
+      
+      // Check if this is an authentication error
+      if (error instanceof Error && (error.message.includes('Authentication required') || error.message.includes('Unauthorized'))) {
+        // Store the tournament they were trying to join
+        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournamentId}`);
+        sessionStorage.setItem('joinTournamentAfterLogin', tournamentId.toString());
+        
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to join this tournament. Redirecting you to login...",
+          variant: "destructive"
+        });
+        
+        // Redirect to login page
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
+        return;
+      }
+      
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to join tournament",
@@ -148,7 +168,7 @@ const Tournaments = () => {
   const filteredTournaments = tournaments.filter((tournament) => {
     const matchesSearch = tournament.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (tournament.game_name && tournament.game_name.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesGame = gameFilter === 'all' || tournament.game_id === parseInt(gameFilter);
+    const matchesGame = gameFilter === 'all' || tournament.game_name === games.find(g => g.slug === gameFilter)?.name || tournament.game_slug === gameFilter;
     const matchesStatus = statusFilter === 'all' || tournament.status === statusFilter;
     return matchesSearch && matchesGame && matchesStatus;
   });
@@ -182,12 +202,11 @@ const Tournaments = () => {
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
                 <SelectItem value="all">All Games</SelectItem>
-                <SelectItem value="pubg">PUBG Mobile</SelectItem>
-                <SelectItem value="ea fc">EA FC 25</SelectItem>
-                <SelectItem value="valorant">Valorant</SelectItem>
-                <SelectItem value="cod">COD Mobile</SelectItem>
-                <SelectItem value="fortnite">Fortnite</SelectItem>
-                <SelectItem value="league">League of Legends</SelectItem>
+                {games.map((game) => (
+                  <SelectItem key={game._row_id} value={game.slug}>
+                    {game.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
