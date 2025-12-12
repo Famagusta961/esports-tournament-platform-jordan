@@ -10,7 +10,7 @@ const Footer = () => {
           <div className="space-y-4">
             <Link to="/" className="inline-block">
               <img 
-                src="/arenajo-logo-square.png" 
+                src="/arenajo-logo-rectangle-updated.png" 
                 alt="ArenaJo" 
                 className="h-10 w-auto object-contain"
               />
