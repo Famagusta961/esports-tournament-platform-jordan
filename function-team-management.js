@@ -124,8 +124,8 @@ export default async function(req: Request): Promise<Response> {
           }))
         };
         
-        console.log('get_team_by_id response:', JSON.stringify(response, null, 2));
-        console.log('Team game_id:', team.game_id, 'Game name:', team.game_name);
+        console.log('v3-UPDATED-EDGE-FUNC get_team_by_id response:', JSON.stringify(response, null, 2));
+        console.log('v3-UPDATED-EDGE-FUNC Team game_id:', team.game_id, 'Game name:', team.game_name);
         return Response.json(response);
 
       case 'create':
