@@ -849,58 +849,25 @@ export const teamService = {
     try {
       console.log('teamService.getTeamById: Fetching team', teamId);
       
-      // First try the direct approach
-      try {
-        const response = await functions.post('team-management', { 
-          action: 'get_team_by_id',
-          team_id: teamId 
-        });
-        
-        if (response?.success) {
-          console.log('teamService.getTeamById: Direct fetch successful');
-          return {
-            team: response.team,
-            members: response.team?.members || []
-          };
-        }
-      } catch (directError) {
-        console.log('teamService.getTeamById: Direct fetch failed, trying workaround');
-      }
-      
-      // Fallback: Get from user's teams list
-      const userTeamsResponse = await functions.post('team-management', { 
-        action: 'get_user_teams'
+      const response = await functions.post('team-management', { 
+        action: 'get_team_by_id',
+        team_id: teamId 
       });
       
-      console.log('teamService.getTeamById: User teams response', userTeamsResponse);
+      console.log('teamService.getTeamById: Response', { 
+        success: response?.success, 
+        hasTeam: !!response?.team,
+        hasMembers: !!response?.team?.members
+      });
       
-      if (userTeamsResponse?.success && userTeamsResponse.teams) {
-        const team = userTeamsResponse.teams.find((t: any) => t._row_id === teamId);
-        
-        if (team) {
-          console.log('teamService.getTeamById: Found team in user teams list', team.name);
-          return {
-            team: {
-              _row_id: team._row_id,
-              name: team.name,
-              tag: team.tag || '',
-              description: team.description || '',
-              captain_id: team.captain_id,
-              captain_username: team.captain_username,
-              logo_url: team.logo_url,
-              created_at: team.created_at,
-              invite_code: '',
-              members: []
-            },
-            members: []
-          };
-        }
+      if (response?.success) {
+        return {
+          team: response.team,
+          members: response.team?.members || []
+        };
       }
-      
-      throw new Error('Team not found or access denied');
-      
+      throw new Error(response?.error || 'Failed to load team');
     } catch (error) {
-      console.error('teamService.getTeamById: All approaches failed', error);
       handleApiError(error, 'Failed to load team');
       throw error;
     }

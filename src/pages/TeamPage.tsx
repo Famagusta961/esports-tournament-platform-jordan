@@ -45,13 +45,16 @@ const TeamPage = () => {
 
   useEffect(() => {
     loadUser();
-    if (id) {
+  }, []);
+
+  useEffect(() => {
+    if (id && !isLoading) {
       console.log('TeamPage: useEffect triggered with teamId:', id);
       loadTeamData(parseInt(id));
-    } else {
+    } else if (!id) {
       console.log('TeamPage: useEffect triggered but no teamId found');
     }
-  }, [id]);
+  }, [id, isLoading]);
 
   const loadUser = async () => {
     try {
@@ -278,15 +281,15 @@ const TeamPage = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {members.map((member) => (
-                    <div key={member._row_id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                    <div key={member.user_uuid} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-10 h-10">
                           <AvatarFallback>
-                            {member.username.substring(0, 2).toUpperCase()}
+                            {member.user_uuid.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{member.username}</div>
+                          <div className="font-medium">{member.user_uuid}</div>
                           <div className="text-xs text-muted-foreground">
                             Joined {formatDate(member.joined_at)}
                           </div>
