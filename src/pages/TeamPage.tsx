@@ -138,9 +138,7 @@ console.log('TeamPage v3-FORCED-UPDATE: Bundle should be NEW at', new Date().toI
         }
         
         // Handle game name backwards compatibility
-        const gameName = teamData.game_name ?? 
-                        (teamData.game_id && gamesById[teamData.game_id]?.name ? gamesById[teamData.game_id].name : null) ?? 
-                        'Unknown Game';
+        const gameName = team?.game_name ?? (team?.game_id ? gamesById?.[team.game_id]?.name : undefined) ?? 'Unknown Game';
         
         console.log('TeamPage.loadTeamData: Mapped data:', {
           gameName,
