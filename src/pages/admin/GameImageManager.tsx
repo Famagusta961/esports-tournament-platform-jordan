@@ -29,7 +29,7 @@ const GameImageManager = () => {
     'Rocket League': '/content/games/EGS_RocketLeague_PsyonixLLC_S1_2560x1440-4c231557ef0a0626fbb97e0bd137d837.jpg',
     'Tekken 8': '/content/games/tekken-7-pc-game-steam-cover.jpg',
     'Fortnite': '/content/games/fneco-2025-keyart-thumb-1920x1080-de84aedabf4d.jpg',
-    'COD Mobile': '/content/games/COD_Mobile.jpg',
+    'COD Mobile': '/content/games/COD.jpg',
   };
 
   useEffect(() => {

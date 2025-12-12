@@ -209,7 +209,7 @@ const TournamentDetails = () => {
       'EA FC 25': '/content/games/EA FC 25.jpg',
       'EA FC': '/content/games/EA FC 25.jpg',
       'Valorant': '/content/games/valorant-listing-scaled.jpg',
-      'COD Mobile': '/content/games/COD_Mobile.jpg',
+      'COD Mobile': '/content/games/COD.jpg',
       'Fortnite': '/content/games/fneco-2025-keyart-thumb-1920x1080-de84aedabf4d.jpg',
       'League of Legends': '/content/games/league-of-legends-pc-game-cover.jpg',
       'LoL': '/content/games/league-of-legends-pc-game-cover.jpg',

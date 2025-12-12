@@ -42,7 +42,7 @@ const games = [
     name: 'COD Mobile',
     description: 'Fast-paced mobile FPS with multiple game modes including Battle Royale.',
     color: 'from-orange-500 to-red-600',
-    image: '/content/games/COD_Mobile.jpg',
+    image: '/content/games/COD.jpg',
     activeTournaments: 6,
     totalPlayers: '4,500',
     platforms: ['Mobile'],
