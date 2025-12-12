@@ -33,13 +33,11 @@ type Team = {
   name: string;
   tag: string;
   description?: string;
-  captain_id: string;
-  captain_username: string;
+  captain_user_uuid: string;
   logo_url?: string;
-  created_at: number;
-  member_count: number;
-  status: string;
-  game_name?: string;
+  _created_at: number;
+  member_count?: number;
+  status?: string;
 };
 
 type TeamMember = {
@@ -111,7 +109,27 @@ const TeamManagement = () => {
     try {
       // Load user's teams using actual API
       const myTeamsData = await teamService.getUserTeams();
-      setMyTeams(myTeamsData || []);
+      // Transform API response to match frontend expectations
+      const transformedTeams = (myTeamsData || []).map((team: {
+        _row_id: number;
+        name: string;
+        tag: string;
+        description?: string;
+        logo_url?: string;
+        _created_at: number;
+        member_count?: number;
+      }) => ({
+        _row_id: team._row_id,
+        name: team.name,
+        tag: team.tag || '',
+        description: team.description || '',
+        captain_user_uuid: user?.id || '',
+        logo_url: team.logo_url,
+        _created_at: team._created_at || Date.now() / 1000,
+        member_count: team.member_count || 0,
+        status: 'active'
+      }));
+      setMyTeams(transformedTeams);
       
       // For now, set all teams to empty since we don't have a public teams API
       // This could be implemented later
@@ -253,31 +271,12 @@ const TeamManagement = () => {
 
     if (!selectedTeam) return;
 
-    try {
-      const result = await teamService.removeMember(selectedTeam._row_id, memberUsername);
-      
-      if (result && result.success) {
-        toast({
-          title: "Member Removed",
-          description: `${memberUsername} has been removed from the team`,
-        });
-        
-        // Reload team data
-        loadTeams();
-        if (selectedTeam) {
-          loadTeamMembers(selectedTeam._row_id);
-        }
-      } else {
-        throw new Error(result?.error || 'Failed to remove member');
-      }
-    } catch (error) {
-      console.error('Remove member error:', error);
-      toast({
-        title: "Removal Failed",
-        description: error instanceof Error ? error.message : "Failed to remove member",
-        variant: "destructive"
-      });
-    }
+    // Note: Remove member functionality not implemented in working baseline
+    toast({
+      title: "Feature Not Available",
+      description: "Remove member functionality is not available in this version",
+      variant: "destructive"
+    });
   };
 
   const getRoleBadge = (role: string) => {
@@ -373,7 +372,7 @@ const TeamManagement = () => {
                                 <span>•</span>
                                 <span>{team.member_count} members</span>
                                 <span>•</span>
-                                <span>{team.game_name}</span>
+                                <span>Multi-game</span>
                               </div>
                             </div>
                           </div>
@@ -437,7 +436,7 @@ const TeamManagement = () => {
                           <div>
                             <h4 className="font-medium">{team.name}</h4>
                             <div className="text-sm text-muted-foreground">
-                              [{team.tag}] • {team.member_count} members • {team.game_name}
+                              [{team.tag}] • {team.member_count || 0} members • Multi-game
                             </div>
                           </div>
                         </div>
@@ -476,7 +475,7 @@ const TeamManagement = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Captain:</span>
-                      <div className="font-medium">{selectedTeam.captain_username}</div>
+                      <div className="font-medium">{user?.username || 'Team Captain'}</div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Members:</span>
@@ -484,11 +483,11 @@ const TeamManagement = () => {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Created:</span>
-                      <div className="font-medium">{formatDate(selectedTeam.created_at)}</div>
+                      <div className="font-medium">{formatDate(selectedTeam._created_at)}</div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Game:</span>
-                      <div className="font-medium">{selectedTeam.game_name}</div>
+                      <div className="font-medium">Multi-game</div>
                     </div>
                   </div>
                 </div>

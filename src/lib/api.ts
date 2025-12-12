@@ -773,12 +773,11 @@ export const teamService = {
     }
   },
 
-  // Create team
+  // Create team - working baseline (name only required)
   create: async (data: {
     name: string;
     description?: string;
     tag?: string;
-    game_id: number;
   }) => {
     try {
       const response = await functions.post('team-management', {
@@ -791,13 +790,13 @@ export const teamService = {
     }
   },
 
-  // Invite member
-  inviteMember: async (teamId: number, memberUsername: string) => {
+  // Invite member - working baseline
+  inviteMember: async (teamId: number, username: string) => {
     try {
       const response = await functions.post('team-management', {
-        action: 'invite',
+        action: 'invite_member',
         team_id: teamId,
-        member_username: memberUsername
+        username: username
       });
       return response;
     } catch (error) {
