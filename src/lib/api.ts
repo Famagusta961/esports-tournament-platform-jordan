@@ -266,52 +266,33 @@ export const tournamentService = {
     }
   },
 
-  // Get tournament details - try edge function first, fallback to database
+  // Get tournament details - use database SDK directly for stability
   getById: async (id: number) => {
     try {
-      console.log("tournamentService.getById: Attempting to fetch tournament", { id, source: "edge-function" });
+      console.log("tournamentService.getById: Fetching tournament", { id, source: "database-sdk" });
       
-      // Try edge function first (for authenticated users)
-      const response = await functions.get('tournament-details', { id });
+      // Use database SDK directly for more reliable fetching
+      const { getTournamentSimple } = await import('./simple-tournament-api');
+      const response = await getTournamentSimple(id);
       
-      console.log("tournamentService.getById: Edge function response", { 
+      console.log("tournamentService.getById: Database SDK response", { 
         id, 
         success: response?.success, 
         hasTournament: !!response?.tournament,
         error: response?.error
       });
       
-      // Handle different response structures
-      if (response && (response.success || response.tournament)) {
+      if (response && response.success) {
         return response;
       } else {
-        throw new Error(response?.error || 'Failed to fetch tournament details');
+        throw new Error(response?.error || 'Tournament not found');
       }
     } catch (error) {
-      console.log("tournamentService.getById: Edge function failed, trying database fallback", { 
+      console.error("tournamentService.getById: Failed to fetch tournament", { 
         id, 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as { status?: number })?.status
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
-      
-      // If authentication fails (401 or 403), fallback to database SDK for public data
-      const status = (error as { status?: number })?.status;
-      if (status === 401 || status === 403) {
-        try {
-          console.log("tournamentService.getById: Using database SDK fallback", { id, source: "database" });
-          
-          // Use simple tournament API
-          const { getTournamentSimple } = await import('./simple-tournament-api');
-          return await getTournamentSimple(id);
-        } catch (dbError) {
-          console.error("tournamentService.getById: Database fallback failed", { id, error: dbError });
-          handleApiError(dbError, 'Failed to fetch tournament details from database');
-        }
-      } else {
-        // Re-throw original error if it's not an auth issue
-        console.error("tournamentService.getById: Non-auth error from edge function", { id, error });
-        handleApiError(error, 'Failed to fetch tournament details');
-      }
+      handleApiError(error, 'Failed to fetch tournament details');
     }
   },
 
