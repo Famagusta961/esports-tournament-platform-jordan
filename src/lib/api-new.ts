@@ -45,92 +45,36 @@ export const gameService = {
 
 // Simple tournament APIs that actually work
 export const tournamentService = {
-  // Get tournament by ID - working version
+  // Get tournament by ID - using edge function
   getById: async (id: number) => {
     try {
-      console.log("New API: Fetching tournament", { id });
+      console.log("API: Fetching tournament via edge function", { id });
       
-      const response = await fetch(`/api/v2/database/tournaments?_row_id=eq.${id}`);
-      const data = await response.json();
+      // Use edge function that handles registration properly
+      const response = await functions.get('tournament-details', { id });
       
-      console.log("New API: Raw response", { status: response.status, data });
+      console.log("API: Edge function response", { success: response?.success, hasTournament: !!response?.tournament });
       
-      if (Array.isArray(data) && data.length > 0) {
-        const tournament = data[0];
-        console.log("New API: SUCCESS", { title: tournament.title });
-        
-        // Game mapping for both slug and numeric formats
-        const gameMapping = {
-          '1': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
-          '2': { name: 'EA FC 25', slug: 'ea-fc' },
-          '3': { name: 'Valorant', slug: 'valorant' },
-          '4': { name: 'COD Mobile', slug: 'cod-mobile' },
-          '5': { name: 'Fortnite', slug: 'fortnite' },
-          '6': { name: 'League of Legends', slug: 'lol' },
-          'pubg-mobile': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
-          'ea-fc': { name: 'EA FC 25', slug: 'ea-fc' },
-          'valorant': { name: 'Valorant', slug: 'valorant' },
-          'cod-mobile': { name: 'COD Mobile', slug: 'cod-mobile' },
-          'fortnite': { name: 'Fortnite', slug: 'fortnite' },
-          'lol': { name: 'League of Legends', slug: 'lol' }
-        };
-        
-        const gameInfo = gameMapping[tournament.game_id] || { name: 'Unknown Game', slug: 'unknown' };
-        
-        // Check if user is registered for this tournament
-        let userRegistration = null;
-        try {
-          const user = await auth.getUser();
-          console.log("API: Checking registration for user", { userUuid: user?.uuid, username: user?.username, tournamentId: id });
-          if (user) {
-            const registrationData = await authDb.query('tournament_players', {
-              tournament_row_id: `eq.${id}`,
-              user_uuid: `eq.${user.uuid}`,
-              limit: 1
-            });
-            
-            console.log("API: Registration check result", { 
-              tournamentId: id,
-              userUuid: user.uuid,
-              registrationData: registrationData?.data,
-              count: registrationData?.data?.length
-            });
-            
-            if (registrationData.data && registrationData.data.length > 0) {
-              userRegistration = {
-                registered: true,
-                joined_at: registrationData.data[0].joined_at,
-                status: registrationData.data[0].status,
-                _row_id: registrationData.data[0]._row_id
-              };
-            } else {
-              userRegistration = {
-                registered: false
-              };
-            }
-          }
-        } catch (error) {
-          console.log("Could not check user registration status:", error);
-          userRegistration = { registered: false };
-        }
+      if (response?.success && response?.tournament) {
+        const tournament = response.tournament;
+        console.log("API: Tournament loaded", { 
+          title: tournament.title, 
+          registered: tournament.user_registration?.registered 
+        });
         
         return {
           success: true,
           tournament: {
             ...tournament,
-            game_name: gameInfo.name,
-            game_slug: gameInfo.slug,
             creator_username: null,
-            creator_avatar: null,
-            user_registration: userRegistration,
-            is_admin: false
+            creator_avatar: null
           }
         };
       }
       
-      return { success: false, error: 'Tournament not found' };
+      return { success: false, error: response?.error || 'Tournament not found' };
     } catch (error) {
-      console.error("New API: Error", error);
+      console.error("API: Error fetching tournament", error);
       return { success: false, error: 'Failed to fetch tournament' };
     }
   },
