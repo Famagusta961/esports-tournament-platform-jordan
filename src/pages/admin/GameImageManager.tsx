@@ -84,7 +84,10 @@ const GameImageManager = () => {
     setUploading(prev => ({ ...prev, [gameName]: true }));
     
     try {
-      console.log(`Uploading image for ${gameName}:`, file.name);
+      console.log(`=== STARTING IMAGE UPLOAD FOR ${gameName} ===`);
+      console.log('File name:', file.name);
+      console.log('File type:', file.type);
+      console.log('File size:', file.size);
       
       // Generate temporary filename from game name with timestamp to avoid caching
       const sanitizedGameName = gameName.replace(/[^a-zA-Z0-9]/g, '_');
@@ -92,26 +95,34 @@ const GameImageManager = () => {
       const timestamp = Date.now();
       const tempFileName = `${sanitizedGameName}_temp_${timestamp}.${fileExtension}`;
       
-      console.log(`Uploading temporary file: ${tempFileName}`);
+      console.log(`Generated temp filename: ${tempFileName}`);
+      
+      console.log(`Uploading to: /content/games/${tempFileName}`);
       const result = await content.uploadFile(file, '/content/games/', tempFileName);
+      
+      console.log('Upload result:', result);
       
       // Update the game image mapping with temp file URL (pending change)
       const tempImageUrl = `/content/games/${tempFileName}`;
+      console.log(`Setting temp image URL: ${tempImageUrl}`);
+      
       const newImages = {
         ...gameImages,
         [gameName]: tempImageUrl
       };
       setGameImages(newImages);
       
+      console.log('Updated gameImages state:', newImages);
+      
       // Check for changes
       checkForChanges(newImages);
       
       toast({
         title: "Image uploaded!",
-        description: `${gameName} image has been uploaded. Click "Save Changes" to apply changes to tournament pages.`,
+        description: `${gameName} image uploaded successfully! Click "Save Changes" to apply Changes to apply to tournament pages.`,
       });
       
-      console.log(`Image uploaded successfully for ${gameName}: ${tempImageUrl}`);
+      console.log(`=== IMAGE UPLOAD COMPLETED FOR ${gameName} ===`);
     } catch (error) {
       console.error('Upload error:', error);
       toast({
@@ -362,14 +373,18 @@ const GameImageManager = () => {
                 Manage which games have images assigned to them. Images are automatically displayed on tournament pages and game cards.
               </p>
               <p className="text-sm text-muted-foreground mt-2">
-                💡 Click any game image to upload or replace it. Hover and click the red button to delete.
+                💡 <strong>Two ways to update images:</strong><br/>
+                • Direct: Click any game image to upload/replace<br/>
+                • Pool: Use Upload Pool to batch upload, then assign
               </p>
               {/* Debug info */}
               <div className="mt-2 text-xs text-gray-500 bg-gray-50 dark:bg-gray-900 p-2 rounded">
-                <p>Has changes: {hasChanges ? 'YES' : 'NO'}</p>
-                <p>Saving: {saving ? 'YES' : 'NO'}</p>
+                <p><strong>System Status:</strong></p>
+                <p>Has changes: {hasChanges ? 'YES ✅' : 'NO ❌'}</p>
+                <p>Saving: {saving ? 'YES ⏳' : 'NO ✅'}</p>
                 <p>Pool images: {uploadedImages.length}</p>
-                <p>Pool showing: {showUploadPool ? 'YES' : 'NO'}</p>
+                <p>Pool showing: {showUploadPool ? 'YES ✅' : 'NO ❌'}</p>
+                <p><strong>Instructions:</strong> Click any game card image to upload directly!</p>
               </div>
               {hasChanges && (
                 <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -423,7 +438,6 @@ const GameImageManager = () => {
                 variant="outline" 
                 disabled={saving}
                 onClick={() => {
-                  alert('Upload Pool button clicked!');
                   console.log('Upload Pool button clicked, current state:', showUploadPool);
                   setShowUploadPool(!showUploadPool);
                   console.log('Upload Pool state changed to:', !showUploadPool);
@@ -473,6 +487,7 @@ const GameImageManager = () => {
                               alt={game}
                               className="w-full h-20 object-cover rounded"
                               style={{ width: '100%', height: '80px' }}
+                              key={`${imagePath}-${hasChanges ? 'changed' : 'stable'}`}
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
                               {isUploading ? (
