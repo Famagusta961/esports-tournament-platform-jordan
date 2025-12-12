@@ -35,7 +35,7 @@ type TeamMember = {
 };
 
 const TeamPage = () => {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
@@ -45,10 +45,13 @@ const TeamPage = () => {
 
   useEffect(() => {
     loadUser();
-    if (teamId) {
-      loadTeamData(parseInt(teamId));
+    if (id) {
+      console.log('TeamPage: useEffect triggered with teamId:', id);
+      loadTeamData(parseInt(id));
+    } else {
+      console.log('TeamPage: useEffect triggered but no teamId found');
     }
-  }, [teamId]);
+  }, [id]);
 
   const loadUser = async () => {
     try {
@@ -60,17 +63,21 @@ const TeamPage = () => {
   };
 
   const loadTeamData = async (id: number) => {
+    console.log('TeamPage.loadTeamData: Starting to load team', id);
     setIsLoading(true);
     try {
       console.log('TeamPage.loadTeamData: Loading team', id);
       
       const result = await teamService.getTeamById(id);
       
+      console.log('TeamPage.loadTeamData: API result', result);
+      
       if (result && result.team) {
         console.log('TeamPage.loadTeamData: Team loaded successfully', result.team.name);
         setTeam(result.team);
         setMembers(result.members || []);
       } else {
+        console.log('TeamPage.loadTeamData: No team data found in result');
         throw new Error('Team data not found');
       }
     } catch (error) {
