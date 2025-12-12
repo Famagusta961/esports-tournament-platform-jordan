@@ -8,7 +8,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Image
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +43,12 @@ const AdminLayout = () => {
       label: 'Tournaments',
       icon: Trophy,
       description: 'Manage tournaments'
+    },
+    {
+      path: '/admin/game-images',
+      label: 'Game Images',
+      icon: Image,
+      description: 'Manage game images'
     },
     {
       path: '/admin/users',

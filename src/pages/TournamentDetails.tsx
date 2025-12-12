@@ -202,7 +202,7 @@ const TournamentDetails = () => {
     return colors[gameName] || 'from-gray-500 to-gray-600';
   };
 
-  // Get game image
+  // Get game image with cache busting
   const getGameImage = (gameName: string) => {
     const images: Record<string, string> = {
       'PUBG Mobile': '/content/games/pubg-.jpg',
@@ -214,7 +214,13 @@ const TournamentDetails = () => {
       'League of Legends': '/content/games/league-of-legends-pc-game-cover.jpg',
       'LoL': '/content/games/league-of-legends-pc-game-cover.jpg',
     };
-    return images[gameName] || null;
+    
+    const baseUrl = images[gameName];
+    if (!baseUrl) return null;
+    
+    // Add cache-busting parameter to ensure fresh images
+    const timestamp = Date.now();
+    return `${baseUrl}?t=${timestamp}`;
   };
 
   const canJoin = (tournament.status === 'registration' || tournament.status === 'draft') && 

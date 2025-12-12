@@ -4,7 +4,7 @@ import { ArrowLeft, Upload, Image, Gamepad2, Check, X, Camera, Trash2 } from 'lu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import Layout from '@/components/layout/Layout';
+import AdminLayout from '@/components/layout/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
 import { content } from '@/lib/shared/kliv-content.js';
 import db from '@/lib/shared/kliv-database.js';
@@ -75,17 +75,33 @@ const GameImageManager = () => {
     setUploading(prev => ({ ...prev, [gameName]: true }));
     
     try {
-      // Generate filename from game name
+      // Delete old image if it exists
+      const currentImage = getGameImage(gameName);
+      if (currentImage && currentImage !== gameImages[gameName as keyof typeof gameImages]) {
+        try {
+          const urlParts = currentImage.split('/');
+          const oldFileName = urlParts[urlParts.length - 1];
+          if (oldFileName) {
+            await content.deleteFile(`/content/games/${oldFileName}`);
+          }
+        } catch (deleteError) {
+          console.warn('Could not delete old image:', deleteError);
+        }
+      }
+      
+      // Generate filename from game name with timestamp to avoid caching
       const sanitizedGameName = gameName.replace(/[^a-zA-Z0-9]/g, '_');
       const fileExtension = file.name.split('.').pop();
-      const fileName = `${sanitizedGameName}.${fileExtension}`;
+      const timestamp = Date.now();
+      const fileName = `${sanitizedGameName}_${timestamp}.${fileExtension}`;
       
       const result = await content.uploadFile(file, '/content/games/', fileName);
       
-      // Update the game image mapping
+      // Update the game image mapping with cache-busting
+      const imageUrlWithTimestamp = result.contentUrl + `?t=${timestamp}`;
       setGameImages(prev => ({
         ...prev,
-        [gameName]: result.contentUrl
+        [gameName]: imageUrlWithTimestamp
       }));
       
       toast({
@@ -144,46 +160,36 @@ const GameImageManager = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center">Loading tournaments...</div>
-          </div>
-        </div>
-      </Layout>
+      <AdminLayout>
+        <div className="text-center py-8">Loading tournaments...</div>
+      </AdminLayout>
     );
   }
 
   return (
-    <Layout>
-      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <Link to="/admin" className="inline-flex items-center space-x-2 text-muted-foreground hover:text-foreground mb-4">
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Admin</span>
-            </Link>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="font-display text-3xl font-bold mb-2">Game Image Manager</h1>
-                <p className="text-muted-foreground">
-                  Manage which games have images assigned to them. Images are automatically displayed on tournament pages and game cards.
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  💡 Click any game image to upload or replace it. Hover and click the red button to delete.
-                </p>
-              </div>
-              
-              <Link to="/image-test">
-                <Button variant="outline">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload New Images
-                </Button>
-              </Link>
+    <AdminLayout>
+      <div>
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-display text-3xl font-bold mb-2">Game Image Manager</h1>
+              <p className="text-muted-foreground">
+                Manage which games have images assigned to them. Images are automatically displayed on tournament pages and game cards.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                💡 Click any game image to upload or replace it. Hover and click the red button to delete.
+              </p>
             </div>
+            
+            <Link to="/image-test">
+              <Button variant="outline">
+                <Upload className="w-4 h-4 mr-2" />
+                Upload New Images
+              </Button>
+            </Link>
           </div>
+        </div>
 
           {/* Game Images Status */}
           <Card className="mb-8">
@@ -344,9 +350,8 @@ const GameImageManager = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 };
 

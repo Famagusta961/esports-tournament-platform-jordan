@@ -123,7 +123,7 @@ const Games = () => {
                   {game.image ? (
                     <>
                       <img 
-                        src={game.image} 
+                        src={`${game.image}?t=${Date.now()}`} 
                         alt={game.name}
                         className="absolute inset-0 w-full h-full object-cover"
                         style={{ width: '100%', height: '100%' }}
