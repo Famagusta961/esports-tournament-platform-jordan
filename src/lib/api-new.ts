@@ -76,6 +76,35 @@ export const tournamentService = {
         
         const gameInfo = gameMapping[tournament.game_id] || { name: 'Unknown Game', slug: 'unknown' };
         
+        // Check if user is registered for this tournament
+        let userRegistration = null;
+        try {
+          const user = await auth.getUser();
+          if (user) {
+            const registrationData = await db.query('tournament_players', {
+              tournament_id: `eq.${id}`,
+              username: `eq.${user.username}`,
+              limit: 1
+            });
+            
+            if (registrationData.data && registrationData.data.length > 0) {
+              userRegistration = {
+                registered: true,
+                joined_at: registrationData.data[0].joined_at,
+                payment_status: registrationData.data[0].payment_status,
+                team_id: registrationData.data[0].team_id
+              };
+            } else {
+              userRegistration = {
+                registered: false
+              };
+            }
+          }
+        } catch (error) {
+          console.log("Could not check user registration status:", error);
+          userRegistration = { registered: false };
+        }
+        
         return {
           success: true,
           tournament: {
@@ -84,7 +113,7 @@ export const tournamentService = {
             game_slug: gameInfo.slug,
             creator_username: null,
             creator_avatar: null,
-            user_registration: null,
+            user_registration: userRegistration,
             is_admin: false
           }
         };
@@ -144,32 +173,53 @@ export const tournamentService = {
           console.log("New List API: Filtered", { gameFilter, after: filteredTournaments.length });
         }
         
-        // Add basic game info - handle both slug and numeric formats
-        const tournamentsWithGames = filteredTournaments.map(tournament => {
-          const gameId = tournament.game_id;
-          
-          // Mapping for both slug and numeric formats
-          const gameInfo = {
-            '1': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
-            '2': { name: 'EA FC 25', slug: 'ea-fc' },
-            '3': { name: 'Valorant', slug: 'valorant' },
-            '4': { name: 'COD Mobile', slug: 'cod-mobile' },
-            '5': { name: 'Fortnite', slug: 'fortnite' },
-            '6': { name: 'League of Legends', slug: 'lol' },
-            'pubg-mobile': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
-            'ea-fc': { name: 'EA FC 25', slug: 'ea-fc' },
-            'valorant': { name: 'Valorant', slug: 'valorant' },
-            'cod-mobile': { name: 'COD Mobile', slug: 'cod-mobile' },
-            'fortnite': { name: 'Fortnite', slug: 'fortnite' },
-            'lol': { name: 'League of Legends', slug: 'lol' }
-          }[gameId] || { name: 'Unknown Game', slug: 'unknown' };
-          
-          return {
-            ...tournament,
-            game_name: gameInfo.name,
-            game_slug: gameInfo.slug
-          };
-        });
+        // Add basic game info and user registration status
+        const tournamentsWithGames = await Promise.all(
+          filteredTournaments.map(async (tournament) => {
+            const gameId = tournament.game_id;
+            
+            // Mapping for both slug and numeric formats
+            const gameInfo = {
+              '1': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
+              '2': { name: 'EA FC 25', slug: 'ea-fc' },
+              '3': { name: 'Valorant', slug: 'valorant' },
+              '4': { name: 'COD Mobile', slug: 'cod-mobile' },
+              '5': { name: 'Fortnite', slug: 'fortnite' },
+              '6': { name: 'League of Legends', slug: 'lol' },
+              'pubg-mobile': { name: 'PUBG Mobile', slug: 'pubg-mobile' },
+              'ea-fc': { name: 'EA FC 25', slug: 'ea-fc' },
+              'valorant': { name: 'Valorant', slug: 'valorant' },
+              'cod-mobile': { name: 'COD Mobile', slug: 'cod-mobile' },
+              'fortnite': { name: 'Fortnite', slug: 'fortnite' },
+              'lol': { name: 'League of Legends', slug: 'lol' }
+            }[gameId] || { name: 'Unknown Game', slug: 'unknown' };
+            
+            // Check if user is registered for this tournament
+            let userRegistered = false;
+            try {
+              const user = await auth.getUser();
+              if (user) {
+                const registrationData = await db.query('tournament_players', {
+                  tournament_id: `eq.${tournament._row_id}`,
+                  username: `eq.${user.username}`,
+                  limit: 1
+                });
+                
+                userRegistered = registrationData.data && registrationData.data.length > 0;
+              }
+            } catch (error) {
+              console.log(`Could not check registration for tournament ${tournament._row_id}:`, error);
+              userRegistered = false;
+            }
+            
+            return {
+              ...tournament,
+              game_name: gameInfo.name,
+              game_slug: gameInfo.slug,
+              user_registered: userRegistered
+            };
+          })
+        );
         
         console.log("New List API: SUCCESS", { count: tournamentsWithGames.length });
         

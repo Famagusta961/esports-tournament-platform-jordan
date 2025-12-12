@@ -27,7 +27,12 @@ type TournamentDetail = {
   registration_deadline?: string;
   status: string;
   game_name?: string;
-  user_registration?: unknown;
+  user_registration?: {
+    registered: boolean;
+    joined_at?: number;
+    payment_status?: string;
+    team_id?: number;
+  } | null;
   registered_players?: unknown[];
   is_admin?: boolean;
 };
@@ -67,13 +72,15 @@ const TournamentDetails = () => {
         tournamentId, 
         success: result?.success, 
         hasTournament: !!result?.tournament,
+        userRegistration: result?.tournament?.user_registration,
         error: result?.error
       });
       
       if (result && result.success && result.tournament) {
         console.log('TournamentDetails: Setting tournament data', { 
           title: result.tournament.title,
-          game_name: result.tournament.game_name
+          game_name: result.tournament.game_name,
+          user_registered: result.tournament.user_registration?.registered
         });
         setTournament(result.tournament);
       } else {
@@ -91,33 +98,28 @@ const TournamentDetails = () => {
   const handleJoinTournament = async () => {
     if (!tournament) return;
     
-    console.log(`JOIN: Clicked tournament ${tournament._row_id} from details page`);
+    console.log('JOIN: Clicked tournament', tournament._row_id);
     
     // Check authentication first
     try {
       const user = await auth.getUser();
       if (!user) {
-        console.log(`NOT AUTH → redirecting to login (no API call) for tournament ${tournament._row_id}`);
-        // Store the tournament they were trying to join
-        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
+        console.log('NOT AUTH -> redirecting to login');
+        sessionStorage.setItem('redirectAfterLogin', '/tournaments/${tournament._row_id}');
         sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
-        
-        // Redirect to login immediately without showing any toast
         navigate('/login');
         return;
       }
     } catch (error) {
-      console.log(`NOT AUTH → redirecting to login (no API call) for tournament ${tournament._row_id} (caught error)`);
-      // User is not authenticated
-      sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
+      console.log('NOT AUTH -> redirecting to login (caught error)');
+      sessionStorage.setItem('redirectAfterLogin', '/tournaments/${tournament._row_id}');
       sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
       navigate('/login');
       return;
     }
     
-    console.log(`AUTH → calling join API for tournament ${tournament._row_id}`);
+    console.log('AUTH -> calling join API');
     
-    // User is authenticated, proceed with tournament join
     try {
       setJoining(true);
       const result = await tournamentService.join(tournament._row_id);
@@ -127,35 +129,17 @@ const TournamentDetails = () => {
           title: "Registration successful!",
           description: result.message || "You have been registered for the tournament",
         });
-        // Reload tournament data to update player count
         loadTournament(tournament._row_id);
       } else {
         throw new Error(result?.error || 'Failed to join tournament');
       }
     } catch (error) {
       console.error('Join tournament error:', error);
-      
-      // Only show toast for non-authentication errors
-      if (error instanceof Error && 
-          !error.message.includes('Authentication required') && 
-          !error.message.includes('Unauthorized') &&
-          (error as { status?: number }).status !== 401 && (error as { status?: number }).status !== 403) {
-        toast({
-          title: "Registration failed",
-          description: error.message || "Failed to join tournament",
-          variant: "destructive"
-        });
-      }
-      
-      // If we get here with an auth error, redirect to login
-      if (error instanceof Error && 
-          (error.message.includes('Authentication required') || 
-           error.message.includes('Unauthorized') ||
-           (error as { status?: number }).status === 401 || (error as { status?: number }).status === 403)) {
-        sessionStorage.setItem('redirectAfterLogin', `/tournaments/${tournament._row_id}`);
-        sessionStorage.setItem('joinTournamentAfterLogin', tournament._row_id.toString());
-        navigate('/login');
-      }
+      toast({
+        title: "Registration failed",
+        description: error.message || "Failed to join tournament",
+        variant: "destructive"
+      });
     } finally {
       setJoining(false);
     }
@@ -164,25 +148,23 @@ const TournamentDetails = () => {
   const handleUnregisterTournament = async () => {
     if (!tournament) return;
     
-    console.log(`UNREGISTER: Clicked tournament ${tournament._row_id} from details page`);
+    console.log('UNREGISTER: Clicked tournament', tournament._row_id);
     
-    // Check authentication first
     try {
       const user = await auth.getUser();
       if (!user) {
-        console.log(`NOT AUTH → redirecting to login (no API call) for unregister tournament ${tournament._row_id}`);
+        console.log('NOT AUTH -> redirecting to login');
         navigate('/login');
         return;
       }
     } catch (error) {
-      console.log(`NOT AUTH → redirecting to login (no API call) for unregister tournament ${tournament._row_id} (caught error)`);
+      console.log('NOT AUTH -> redirecting to login (caught error)');
       navigate('/login');
       return;
     }
     
-    console.log(`AUTH → calling unregister API for tournament ${tournament._row_id}`);
+    console.log('AUTH -> calling unregister API');
     
-    // User is authenticated, proceed with tournament unregister
     try {
       setUnregistering(true);
       const result = await tournamentService.unregister(tournament._row_id);
@@ -193,7 +175,6 @@ const TournamentDetails = () => {
           title: "Successfully unregistered!",
           description: message,
         });
-        // Reload tournament data to update player count and registration status
         loadTournament(tournament._row_id);
         setShowUnregisterDialog(false);
       } else {
@@ -201,23 +182,11 @@ const TournamentDetails = () => {
       }
     } catch (error) {
       console.error('Unregister tournament error:', error);
-      
-      // Show toast for all errors (including auth errors)
-      if (error instanceof Error) {
-        toast({
-          title: "Unregister failed",
-          description: error.message || "Failed to unregister from tournament",
-          variant: "destructive"
-        });
-      }
-      
-      // If it's an auth error, redirect to login
-      if (error instanceof Error && 
-          (error.message.includes('Authentication required') || 
-           error.message.includes('Unauthorized') ||
-           (error as { status?: number }).status === 401 || (error as { status?: number }).status === 403)) {
-        navigate('/login');
-      }
+      toast({
+        title: "Unregister failed",
+        description: error.message || "Failed to unregister from tournament",
+        variant: "destructive"
+      });
     } finally {
       setUnregistering(false);
     }
@@ -274,7 +243,6 @@ const TournamentDetails = () => {
     );
   }
 
-  // Get game color
   const getGameColor = (gameName: string) => {
     const colors: Record<string, string> = {
       'PUBG Mobile': 'from-yellow-500 to-orange-600',
@@ -299,16 +267,13 @@ const TournamentDetails = () => {
     <Layout>
       <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
-          {/* Back Button */}
           <Link to="/tournaments" className="inline-flex items-center space-x-2 text-muted-foreground hover:text-foreground mb-6 font-gaming transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Tournaments</span>
           </Link>
 
-          {/* Header Card */}
           <div className="relative overflow-hidden rounded-2xl bg-card border border-border mb-8">
-            {/* Gradient Header */}
-            <div className={`h-32 sm:h-40 bg-gradient-to-r ${getGameColor(tournament.game_name || 'Unknown')} relative`}>
+            <div className={'h-32 sm:h-40 bg-gradient-to-r ' + getGameColor(tournament.game_name || 'Unknown') + ' relative'}>
               <div className="absolute inset-0 bg-black/40" />
               <div className="absolute bottom-4 left-6 flex items-center space-x-3">
                 <Badge variant="secondary" className="bg-black/50 text-white border-0">
@@ -323,7 +288,6 @@ const TournamentDetails = () => {
               </Button>
             </div>
 
-            {/* Content */}
             <div className="p-6 sm:p-8">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
                 <div className="space-y-4">
@@ -360,7 +324,6 @@ const TournamentDetails = () => {
                 </div>
               </div>
 
-              {/* Registration Progress */}
               <div className="mt-6 p-4 rounded-xl bg-muted/30 border border-border">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-gaming text-sm text-muted-foreground">Registration Progress</span>
@@ -377,9 +340,8 @@ const TournamentDetails = () => {
                 </div>
               </div>
 
-              {/* Join/Unregister Button */}
               <div className="mt-6 flex flex-col sm:flex-row gap-4">
-                {currentUserRegistered || (tournament.user_registration && tournament.user_registration.registered) ? (
+                {currentUserRegistered ? (
                   <>
                     <Button 
                       size="lg" 
@@ -420,20 +382,13 @@ const TournamentDetails = () => {
                     onClick={() => {
                       console.log('Create Team clicked for tournament', tournament._row_id);
                       
-                      if (currentUserRegistered) {
-                        toast({
-                          title: "Already Registered",
-                          description: "You're already registered for this tournament.",
-                          variant: "default"
-                        });
-                      } else if (canJoin) {
-                        // Store tournament context so we can show relevant message after team creation
+                      if (canJoin) {
                         sessionStorage.setItem('tournamentContext', JSON.stringify({
                           id: tournament._row_id,
                           title: tournament.title,
                           game_name: tournament.game_name
                         }));
-                        sessionStorage.setItem('redirectToTournamentAfterTeamCreation', `/tournaments/${tournament._row_id}`);
+                        sessionStorage.setItem('redirectToTournamentAfterTeamCreation', '/tournaments/${tournament._row_id}');
                         
                         toast({
                           title: "👥 Team Creation",
@@ -441,7 +396,6 @@ const TournamentDetails = () => {
                           duration: 2000
                         });
                         
-                        // Navigate to team management page which has team creation functionality
                         setTimeout(() => {
                           navigate('/teams');
                         }, 500);
@@ -460,7 +414,6 @@ const TournamentDetails = () => {
                 )}
               </div>
               
-              {/* Unregister Confirmation Dialog */}
               <UnregisterConfirmDialog
                 open={showUnregisterDialog}
                 onOpenChange={setShowUnregisterDialog}
@@ -472,7 +425,18 @@ const TournamentDetails = () => {
             </div>
           </div>
 
-          {/* Tabs Content */}
+          <div className="rounded-xl bg-card border border-border p-6">
+            <h3 className="font-display text-lg font-semibold mb-4">Debug Info</h3>
+            <div className="space-y-2 text-sm">
+              <p><strong>User Registered:</strong> {currentUserRegistered ? 'YES' : 'NO'}</p>
+              <p><strong>Can Join:</strong> {canJoin ? 'YES' : 'NO'}</p>
+              <p><strong>Can Unregister:</strong> {canUnregister ? 'YES' : 'NO'}</p>
+              <p><strong>Tournament Status:</strong> {tournament.status}</p>
+              <p><strong>User Registration Data:</strong></p>
+              <pre>{JSON.stringify(tournament.user_registration, null, 2)}</pre>
+            </div>
+          </div>
+
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="bg-card border border-border p-1 w-full sm:w-auto">
               <TabsTrigger value="overview" className="font-gaming">Overview</TabsTrigger>
@@ -487,32 +451,6 @@ const TournamentDetails = () => {
                   {tournament.description || 'No description available'}
                 </p>
               </div>
-
-              <div className="rounded-xl bg-card border border-border p-6">
-                <h3 className="font-display text-lg font-semibold mb-4">Tournament Format</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-lg bg-muted/30 text-center">
-                    <p className="text-2xl mb-1">🎮</p>
-                    <p className="font-gaming text-sm text-muted-foreground">Format</p>
-                    <p className="font-gaming font-semibold">{tournament.format_type || 'Solo'}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/30 text-center">
-                    <p className="text-2xl mb-1">🎯</p>
-                    <p className="font-gaming text-sm text-muted-foreground">Match Type</p>
-                    <p className="font-gaming font-semibold">{tournament.match_format || '1v1'}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/30 text-center">
-                    <p className="text-2xl mb-1">📱</p>
-                    <p className="font-gaming text-sm text-muted-foreground">Platform</p>
-                    <p className="font-gaming font-semibold">{tournament.platform || 'PC'}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/30 text-center">
-                    <p className="text-2xl mb-1">👥</p>
-                    <p className="font-gaming text-sm text-muted-foreground">Max Players</p>
-                    <p className="font-gaming font-semibold">{tournament.max_players}</p>
-                  </div>
-                </div>
-              </div>
             </TabsContent>
 
             <TabsContent value="rules" className="space-y-6">
@@ -522,71 +460,16 @@ const TournamentDetails = () => {
                   {tournament.rules || 'No rules specified'}
                 </div>
               </div>
-
-              <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-6">
-                <div className="flex items-start space-x-3">
-                  <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-gaming font-semibold text-destructive mb-2">Important Notice</h4>
-                    <p className="font-gaming text-sm text-destructive/80">
-                      Violation of any rules may result in immediate disqualification and potential ban from future tournaments.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </TabsContent>
 
             <TabsContent value="participants" className="space-y-6">
               <div className="rounded-xl bg-card border border-border p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-display text-lg font-semibold">Registered Players</h3>
-                  <Badge variant="secondary" className="font-gaming">
-                    {tournament.current_players || 0}/{tournament.max_players}
-                  </Badge>
+                <div className="text-center py-10">
+                  <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="font-gaming text-muted-foreground">
+                    Participant list available to admins only
+                  </p>
                 </div>
-                
-                {tournament.is_admin && tournament.registered_players && Array.isArray(tournament.registered_players) && tournament.registered_players.length > 0 ? (
-                  <div className="space-y-3">
-                    {tournament.registered_players.map((player: unknown) => {
-                      const playerData = player as Record<string, unknown>;
-                      return (
-                        <div 
-                          key={playerData._row_id as number}
-                          className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                              <span className="font-display font-bold text-sm text-white">
-                                {(playerData.username as string || 'U').charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-gaming font-semibold">{playerData.username as string || 'Unknown'}</p>
-                              <p className="text-xs text-muted-foreground font-gaming">
-                                {playerData.team_name ? `Team: ${playerData.team_name as string}` : 'Individual'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <Badge variant={playerData.payment_status === 'paid' ? 'default' : 'secondary'}>
-                              {playerData.payment_status as string || 'free'}
-                            </Badge>
-                            <p className="text-xs text-muted-foreground font-gaming mt-1">
-                              Joined {new Date((playerData.joined_at as number) * 1000).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-10">
-                    <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="font-gaming text-muted-foreground">
-                      {tournament.is_admin ? 'No players registered yet' : 'Participant list available to admins only'}
-                    </p>
-                  </div>
-                )}
               </div>
             </TabsContent>
           </Tabs>
