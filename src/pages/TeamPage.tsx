@@ -93,7 +93,18 @@ const TeamPage = () => {
       
       if (result && result.team) {
         console.log('TeamPage.loadTeamData: Team loaded successfully', result.team.name);
-        setTeam(result.team);
+        // Ensure required fields have defaults to prevent undefined errors
+        const safeTeam = {
+          ...result.team,
+          name: result.team.name || 'Unknown Team',
+          tag: result.team.tag || '',
+          captain_username: result.team.captain_username || 'Unknown Captain',
+          member_count: result.team.member_count || 0,
+          created_at: result.team.created_at || Date.now() / 1000,
+          game_name: result.team.game_name || 'Unknown Game',
+          description: result.team.description || ''
+        };
+        setTeam(safeTeam);
         setMembers(result.members || []);
       } else {
         console.log('TeamPage.loadTeamData: No team data found in result');
@@ -185,25 +196,27 @@ const TeamPage = () => {
                 <Avatar className="w-16 h-16">
                   <AvatarImage src={team.logo_url} />
                   <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                    {team.tag || team.name.substring(0, 2).toUpperCase()}
+                    {team.tag || (team.name?.substring(0, 2).toUpperCase() || 'T')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h1 className="font-display text-3xl font-bold">{team.name}</h1>
                   <div className="flex items-center space-x-2 text-muted-foreground">
-                    <span className="font-mono bg-muted px-2 py-1 rounded text-sm">
-                      [{team.tag}]
-                    </span>
+                    {team.tag && (
+                      <span className="font-mono bg-muted px-2 py-1 rounded text-sm">
+                        [{team.tag}]
+                      </span>
+                    )}
                     <span>•</span>
-                    <span>{team.game_name}</span>
+                    <span>{team.game_name || 'Unknown Game'}</span>
                     <span>•</span>
-                    <span>{team.member_count} members</span>
+                    <span>{team.member_count || 0} members</span>
                   </div>
                 </div>
               </div>
             </div>
             
-            {user?.id !== team.captain_id && (
+            {user && user.id && team.captain_id && user.id !== team.captain_id && (
               <Button 
                 onClick={handleJoinTeam}
                 className="bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90 font-gaming"
@@ -226,7 +239,7 @@ const TeamPage = () => {
                 <div className="flex items-center space-x-3">
                   <Avatar className="w-10 h-10">
                     <AvatarFallback>
-                      {team.captain_username.substring(0, 2).toUpperCase()}
+                      {(team.captain_username?.substring(0, 2).toUpperCase() || 'CA')}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -302,13 +315,13 @@ const TeamPage = () => {
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-10 h-10">
                           <AvatarFallback>
-                            {member.user_uuid.substring(0, 6).toUpperCase()}
+                            {(member.user_uuid?.substring(0, 6).toUpperCase() || 'U')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="font-medium">Team Member</div>
                           <div className="text-xs text-muted-foreground">
-                            {member.user_uuid.substring(0, 8)}... • Joined {formatDate(member.joined_at)}
+                            {(member.user_uuid?.substring(0, 8) || 'UUID')}... • Joined {formatDate(member.joined_at)}
                           </div>
                         </div>
                       </div>
