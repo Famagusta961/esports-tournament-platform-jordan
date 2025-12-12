@@ -52,6 +52,7 @@ type Tournament = {
   status: string;
   is_featured: boolean;
   game_name?: string;
+  game_slug?: string;
   game_id?: number;
 };
 
@@ -168,6 +169,7 @@ const Tournaments = () => {
   const filteredTournaments = tournaments.filter((tournament) => {
     const matchesSearch = tournament.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (tournament.game_name && tournament.game_name.toLowerCase().includes(searchQuery.toLowerCase()));
+    // Game and status filtering is handled by the API, but keep for search-only filtering
     const matchesGame = gameFilter === 'all' || tournament.game_slug === gameFilter;
     const matchesStatus = statusFilter === 'all' || tournament.status === statusFilter;
     return matchesSearch && matchesGame && matchesStatus;

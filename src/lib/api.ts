@@ -158,8 +158,9 @@ export const tournamentService = {
       const response = await functions.get('tournament-list', params);
       return response;
     } catch (error) {
-      // If authentication fails (403), fallback to database SDK for public data
-      if ((error as { status?: number })?.status === 403) {
+      // If authentication fails (401 or 403), fallback to database SDK for public data
+      const status = (error as { status?: number })?.status;
+      if (status === 401 || status === 403) {
         try {
           console.log('Edge function requires auth, using database SDK for public tournaments');
           
@@ -276,11 +277,12 @@ export const tournamentService = {
       console.log("tournamentService.getById: Edge function failed, trying database fallback", { 
         id, 
         error: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as { status?: number }).status
+        status: (error as { status?: number })?.status
       });
       
-      // If authentication fails (403), fallback to database SDK for public data
-      if ((error as { status?: number })?.status === 403) {
+      // If authentication fails (401 or 403), fallback to database SDK for public data
+      const status = (error as { status?: number })?.status;
+      if (status === 401 || status === 403) {
         try {
           console.log("tournamentService.getById: Using database SDK fallback", { id, source: "database" });
           
