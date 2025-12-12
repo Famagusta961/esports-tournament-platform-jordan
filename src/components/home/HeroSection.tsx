@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Trophy, Users, Zap, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import auth from '@/lib/shared/kliv-auth.js';
 
 interface User {
@@ -12,6 +13,7 @@ interface User {
 }
 
 const HeroSection = () => {
+  const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,21 +56,29 @@ const HeroSection = () => {
             </div>
             <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30">
               <Zap className="w-4 h-4 text-primary" />
-              <span className="font-gaming text-sm text-primary">Jordan's #1 Esports Platform</span>
+              <span className="font-gaming text-sm text-primary">
+                {t('home.hero.subtitle').split('\n')[0]}
+              </span>
             </div>
           </div>
 
           {/* Headline */}
           <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight animate-slide-up" style={{ animationDelay: '0.1s' }}>
-            <span className="block">COMPETE.</span>
-            <span className="block text-gradient">WIN.</span>
-            <span className="block">DOMINATE.</span>
+            {t('home.hero.title').split('. ').map((part: string, index: number, array: string[]) => (
+              <span key={index} className="block">
+                {part}
+                {index < array.length - 1 ? (
+                  <span className="text-gradient">.</span>
+                ) : (
+                  '.'
+                )}
+              </span>
+            ))}
           </h1>
 
           {/* Subtitle */}
           <p className="max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground font-gaming animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            Join thousands of players in Jordan's biggest esports tournaments. 
-            Battle in PUBG Mobile, EA FC, Valorant, and more. Real prizes, real glory.
+            {t('home.hero.description')}
           </p>
 
           {/* CTA Buttons */}
@@ -76,7 +86,7 @@ const HeroSection = () => {
             <Link to="/tournaments">
               <Button size="lg" className="font-gaming text-lg px-8 py-6 bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90 glow-cyan group">
                 <Trophy className="w-5 h-5 mr-2" />
-                Browse Tournaments
+                {t('home.hero.getStarted')}
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
@@ -86,7 +96,7 @@ const HeroSection = () => {
               <Link to="/register">
                 <Button size="lg" variant="outline" className="font-gaming text-lg px-8 py-6 border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10">
                   <Users className="w-5 h-5 mr-2" />
-                  Create Account
+                  {t('navigation.register')}
                 </Button>
               </Link>
             )}

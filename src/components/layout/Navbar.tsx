@@ -4,6 +4,9 @@ import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield, Home, Up
 import { Button } from '@/components/ui/button';
 import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { isRTL } from '@/lib/i18n';
 
 interface UserData {
   firstName?: string;
@@ -12,6 +15,7 @@ interface UserData {
 }
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -51,10 +55,10 @@ const Navbar = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Tournaments', href: '/tournaments', icon: Trophy },
-    { name: 'Games', href: '/games', icon: Gamepad2 },
-    { name: 'Leaderboard', href: '/leaderboard', icon: Users },
+    { name: t('navigation.home'), href: '/', icon: Home },
+    { name: t('navigation.tournaments'), href: '/tournaments', icon: Trophy },
+    { name: t('navigation.games'), href: '/games', icon: Gamepad2 },
+    { name: t('navigation.leaderboard'), href: '/leaderboard', icon: Users },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -97,6 +101,9 @@ const Navbar = () => {
 
           {/* Auth Buttons */}
           <div className="hidden lg:flex items-center space-x-3">
+            {/* Language Switcher */}
+            <LanguageSwitcher />
+            
             {user ? (
               <>
                 {isAdmin && (
@@ -110,7 +117,7 @@ const Navbar = () => {
                     <Link to="/admin">
                       <Button variant="ghost" size="sm" className="font-gaming">
                         <Shield className="w-4 h-4 mr-2" />
-                        Admin
+                        {t('navigation.admin')}
                       </Button>
                     </Link>
                   </>
@@ -118,13 +125,13 @@ const Navbar = () => {
                 <Link to="/wallet">
                   <Button variant="ghost" size="sm" className="font-gaming">
                     <Wallet className="w-4 h-4 mr-2" />
-                    Wallet
+                    {t('navigation.wallet')}
                   </Button>
                 </Link>
                 <Link to="/profile">
                   <Button variant="outline" className="font-gaming border-primary/50 hover:border-primary hover:bg-primary/10">
                     <User className="w-4 h-4 mr-2" />
-                    {user.firstName || 'Profile'}
+                    {user.firstName || t('navigation.profile')}
                   </Button>
                 </Link>
               </>
@@ -133,12 +140,12 @@ const Navbar = () => {
                 <Link to="/login">
                   <Button variant="ghost" className="font-gaming">
                     <LogIn className="w-4 h-4 mr-2" />
-                    Login
+                    {t('navigation.login')}
                   </Button>
                 </Link>
                 <Link to="/register">
                   <Button className="font-gaming bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-cyan">
-                    Join Now
+                    {t('navigation.register')}
                   </Button>
                 </Link>
               </>
@@ -159,6 +166,11 @@ const Navbar = () => {
       {isOpen && (
         <div className="lg:hidden bg-background/98 backdrop-blur-lg border-b border-border animate-slide-up">
           <div className="px-4 py-4 space-y-2">
+            {/* Mobile Language Switcher */}
+            <div className="flex justify-end pb-3 border-b border-border">
+              <LanguageSwitcher />
+            </div>
+            
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -181,20 +193,20 @@ const Navbar = () => {
                     <Link to="/admin" onClick={() => setIsOpen(false)}>
                       <Button variant="ghost" className="w-full justify-start font-gaming">
                         <Shield className="w-5 h-5 mr-3" />
-                        Admin Panel
+                        {t('navigation.admin')}
                       </Button>
                     </Link>
                   )}
                   <Link to="/wallet" onClick={() => setIsOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start font-gaming">
                       <Wallet className="w-5 h-5 mr-3" />
-                      Wallet
+                      {t('navigation.wallet')}
                     </Button>
                   </Link>
                   <Link to="/profile" onClick={() => setIsOpen(false)}>
                     <Button variant="outline" className="w-full justify-start font-gaming">
                       <User className="w-5 h-5 mr-3" />
-                      Profile
+                      {t('navigation.profile')}
                     </Button>
                   </Link>
                 </>
@@ -203,12 +215,12 @@ const Navbar = () => {
                   <Link to="/login" onClick={() => setIsOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start font-gaming">
                       <LogIn className="w-5 h-5 mr-3" />
-                      Login
+                      {t('navigation.login')}
                     </Button>
                   </Link>
                   <Link to="/register" onClick={() => setIsOpen(false)}>
                     <Button className="w-full font-gaming bg-gradient-to-r from-primary to-secondary">
-                      Join Now
+                      {t('navigation.register')}
                     </Button>
                   </Link>
                 </>

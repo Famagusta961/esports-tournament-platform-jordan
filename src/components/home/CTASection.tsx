@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Zap, Trophy, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 const CTASection = () => {
+  const { t } = useTranslation();
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
@@ -19,23 +21,32 @@ const CTASection = () => {
           <div className="relative p-8 sm:p-12 lg:p-16 text-center">
             <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mb-6">
               <Zap className="w-4 h-4 text-primary" />
-              <span className="font-gaming text-sm text-primary">Ready to Compete?</span>
+              <span className="font-gaming text-sm text-primary">{t('home.cta.title')}</span>
             </div>
 
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-              Join the <span className="text-gradient">Battle</span> Today
+              {t('home.cta.subtitle').split('<span>').map((part: string, index: number) => {
+                if (part.includes('</span>')) {
+                  return (
+                    <>
+                      {part.replace('</span>', '')}
+                      <span className="text-gradient">{part.replace('</span>', '')}</span>
+                    </>
+                  );
+                }
+                return part;
+              })}
             </h2>
 
             <p className="text-muted-foreground font-gaming text-lg max-w-2xl mx-auto mb-8">
-              Create your free account and start competing in tournaments. 
-              Thousands of players are already battling for glory and prizes.
+              {t('home.cta.description') || 'Create your free account and start competing in tournaments. Thousands of players are already battling for glory and prizes.'}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/register">
                 <Button size="lg" className="font-gaming text-lg px-8 py-6 bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90 glow-cyan group">
                   <Trophy className="w-5 h-5 mr-2" />
-                  Start Competing
+                  {t('home.cta.button')}
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
