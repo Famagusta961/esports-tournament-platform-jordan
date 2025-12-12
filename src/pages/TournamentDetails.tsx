@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Calendar, Users, Trophy, Clock, MapPin, Share2, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +71,7 @@ type TournamentDetail = {
 
 const TournamentDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -343,19 +344,30 @@ const TournamentDetails = () => {
                   onClick={() => {
                     console.log('Create Team clicked for tournament', tournament._row_id);
                     
-                    // Show helpful team creation info
-                    if (canJoin) {
-                      toast({
-                        title: "💬 Team Registration",
-                        description: "Team creation is coming soon! For now, join individually and we'll match you with teammates or contact your team members to register separately.",
-                        duration: 5000
-                      });
-                    } else if (currentUserRegistered) {
+                    if (currentUserRegistered) {
                       toast({
                         title: "Already Registered",
                         description: "You're already registered for this tournament.",
                         variant: "default"
                       });
+                    } else if (canJoin) {
+                      // Store tournament context so we can show relevant message after team creation
+                      sessionStorage.setItem('tournamentContext', JSON.stringify({
+                        id: tournament._row_id,
+                        title: tournament.title,
+                        game_name: tournament.game_name
+                      }));
+                      
+                      toast({
+                        title: "👥 Team Creation",
+                        description: "Opening team creation page...",
+                        duration: 2000
+                      });
+                      
+                      // Navigate to team management page which has team creation functionality
+                      setTimeout(() => {
+                        navigate('/teams');
+                      }, 500);
                     } else {
                       toast({
                         title: "Registration Closed", 
