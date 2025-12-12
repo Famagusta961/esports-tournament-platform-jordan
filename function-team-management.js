@@ -2,11 +2,11 @@ import { connect } from "npm:@tursodatabase/serverless";
 
 export default async function(req: Request): Promise<Response> {
   const userUuid = req.headers.get("x-user-uuid");
-  const userName = req.headers.get("x-user-name");
+  const userName = req.headers.get("x-user-name") || 'Team Captain';
   const dbUrl = req.headers.get("x-database-url");
   const dbToken = req.headers.get("x-database-token");
 
-  if (!userUuid || userUuid === 'anonymous' || !userName || !dbUrl || !dbToken) {
+  if (!userUuid || userUuid === 'anonymous' || !dbUrl || !dbToken) {
     return Response.json({ success: false, error: "Authentication required" }, { status: 401 });
   }
 

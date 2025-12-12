@@ -52,16 +52,7 @@ type TeamMember = {
   status: string;
 };
 
-type Game = {
-  _row_id: number;
-  name: string;
-  short_name: string;
-  slug: string;
-  description: string;
-  platforms: string;
-  formats: string;
-  is_active: boolean;
-};
+
 
 const TeamManagement = () => {
   const navigate = useNavigate();
@@ -78,16 +69,13 @@ const TeamManagement = () => {
   const [createFormData, setCreateFormData] = useState({
     name: '',
     tag: '',
-    description: '',
-    game_id: 0
+    description: ''
   });
   const [inviteEmail, setInviteEmail] = useState('');
-  const [games, setGames] = useState<Game[]>([]);
 
   useEffect(() => {
     loadUser();
     loadTeams();
-    loadGames();
     checkTournamentContext();
   }, []);
 
@@ -100,15 +88,7 @@ const TeamManagement = () => {
     }
   };
 
-  const loadGames = async () => {
-    try {
-      const db = await import('@/lib/shared/kliv-database.js').then(m => m.default);
-      const gamesData = await db.query('games', { is_active: 'eq.1' });
-      setGames(gamesData || []);
-    } catch (error) {
-      console.error('Failed to load games:', error);
-    }
-  };
+  
 
   const checkTournamentContext = () => {
     const tournamentContext = sessionStorage.getItem('tournamentContext');
@@ -182,10 +162,10 @@ const TeamManagement = () => {
       return;
     }
 
-    if (!createFormData.name || !createFormData.tag || !createFormData.game_id) {
+    if (!createFormData.name || createFormData.name.length < 2) {
       toast({
         title: "Validation Error",
-        description: "Please fill in team name, tag, and select a game",
+        description: "Team name required (minimum 2 characters)",
         variant: "destructive"
       });
       return;
@@ -195,8 +175,7 @@ const TeamManagement = () => {
       const result = await teamService.create({
         name: createFormData.name,
         description: createFormData.description,
-        tag: createFormData.tag,
-        game_id: createFormData.game_id
+        tag: createFormData.tag
       });
       
       if (result && result.success) {
@@ -207,7 +186,7 @@ const TeamManagement = () => {
         });
         
         setShowCreateForm(false);
-        setCreateFormData({ name: '', tag: '', description: '', game_id: 0 });
+        setCreateFormData({ name: '', tag: '', description: '' });
         loadTeams();
         
         // Check if we should redirect back to a tournament
@@ -611,14 +590,13 @@ const TeamManagement = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="team_tag">Team Tag *</Label>
+                      <Label htmlFor="team_tag">Team Tag (Optional)</Label>
                       <Input
                         id="team_tag"
                         placeholder="3-4 letter tag"
                         maxLength={4}
                         value={createFormData.tag}
                         onChange={(e) => setCreateFormData(prev => ({ ...prev, tag: e.target.value.toUpperCase() }))}
-                        required
                       />
                     </div>
                   </div>
@@ -634,24 +612,7 @@ const TeamManagement = () => {
                     />
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="team_game">Primary Game *</Label>
-                    <Select
-                      value={createFormData.game_id.toString()}
-                      onValueChange={(value) => setCreateFormData(prev => ({ ...prev, game_id: parseInt(value) }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your team's primary game" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {games.map((game) => (
-                          <SelectItem key={game._row_id} value={game._row_id.toString()}>
-                            {game.name} ({game.short_name})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  
                   
                   <div className="flex space-x-2">
                     <Button type="submit" className="bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90">
