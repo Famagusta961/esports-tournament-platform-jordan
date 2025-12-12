@@ -368,6 +368,8 @@ const GameImageManager = () => {
               <div className="mt-2 text-xs text-gray-500 bg-gray-50 dark:bg-gray-900 p-2 rounded">
                 <p>Has changes: {hasChanges ? 'YES' : 'NO'}</p>
                 <p>Saving: {saving ? 'YES' : 'NO'}</p>
+                <p>Pool images: {uploadedImages.length}</p>
+                <p>Pool showing: {showUploadPool ? 'YES' : 'NO'}</p>
               </div>
               {hasChanges && (
                 <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -420,7 +422,12 @@ const GameImageManager = () => {
               <Button 
                 variant="outline" 
                 disabled={saving}
-                onClick={() => setShowUploadPool(!showUploadPool)}
+                onClick={() => {
+                  alert('Upload Pool button clicked!');
+                  console.log('Upload Pool button clicked, current state:', showUploadPool);
+                  setShowUploadPool(!showUploadPool);
+                  console.log('Upload Pool state changed to:', !showUploadPool);
+                }}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Upload Pool ({uploadedImages.length})
@@ -560,7 +567,10 @@ const GameImageManager = () => {
                     disabled={uploading.pool}
                   />
                   <Button 
-                    onClick={() => uploadPoolInputRef.current?.click()}
+                    onClick={() => {
+                      console.log('Upload to Pool button clicked');
+                      uploadPoolInputRef.current?.click();
+                    }}
                     disabled={uploading.pool}
                   >
                     {uploading.pool ? (
