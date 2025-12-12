@@ -848,6 +848,7 @@ export const teamService = {
   getTeamById: async (teamId: number) => {
     try {
       console.log('teamService.getTeamById: Fetching team', teamId);
+      console.log('teamService.getTeamById: About to call functions.post to /api/v2/function/team-management');
       
       const response = await functions.post('team-management', { 
         action: 'get_team_by_id',

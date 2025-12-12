@@ -84,6 +84,7 @@ const TeamPage = () => {
     try {
       console.log('TeamPage.loadTeamData: Loading team', id);
       console.log('TeamPage.loadTeamData: Calling teamService.getTeamById with payload:', { action: 'get_team_by_id', team_id: id });
+      console.log("TeamPage: calling getTeamById with", id);
       
       const result = await teamService.getTeamById(id);
       
