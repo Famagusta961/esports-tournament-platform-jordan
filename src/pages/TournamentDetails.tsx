@@ -225,12 +225,14 @@ const TournamentDetails = () => {
     }
   };
 
+  const openUnregisterDialog = () => {
+    setShowUnregisterDialog(true);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'registration':
-        return <Badge className="bg-primary/20 text-primary border-primary/30 text-base px-4 py-1">Registration Open</Badge>;
-      case 'draft':
-        return <Badge className="bg-muted/20 text-muted-foreground border-muted/30 text-base px-4 py-1">Draft</Badge>;
+        return <Badge className="bg-success/20 text-success border-success/30 text-base px-4 py-1">Registration Open</Badge>;
       case 'live':
         return <Badge className="bg-destructive/20 text-destructive border-destructive/30 text-base px-4 py-1 animate-pulse">LIVE</Badge>;
       case 'upcoming':
@@ -239,7 +241,8 @@ const TournamentDetails = () => {
         return <Badge variant="secondary" className="text-base px-4 py-1">Completed</Badge>;
     }
   };
-      if (loading) {
+
+  if (loading) {
     return (
       <Layout>
         <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
@@ -288,15 +291,8 @@ const TournamentDetails = () => {
     return colors[gameName] || 'from-gray-500 to-gray-600';
   };
 
-  // Check user registration status
-  const userReg = tournament.user_registration as { registered?: boolean; joined_at?: number; status?: string } | null;
-  const currentUserRegistered = userReg?.registered || false;
-  console.log('UI Registration Check:', { 
-    userReg, 
-    currentUserRegistered,
-    tournamentId: tournament._row_id 
-  });
 
+  const currentUserRegistered = tournament.user_registration?.registered || false;
   const canJoin = (tournament.status === 'registration' || tournament.status === 'draft') && 
                    tournament.current_players < tournament.max_players && 
                    !currentUserRegistered;
@@ -388,12 +384,12 @@ const TournamentDetails = () => {
 
               {/* Join/Unregister Button */}
               <div className="mt-6 flex flex-col sm:flex-row gap-4">
-                {currentUserRegistered ? (
+                {currentUserRegistered || (tournament.user_registration && tournament.user_registration.registered) ? (
                   <>
                     <Button 
                       size="lg" 
                       className="flex-1 font-gaming text-lg bg-success hover:bg-success/90"
-                      onClick={() => setShowUnregisterDialog(true)}
+                      onClick={openUnregisterDialog}
                       disabled={!canUnregister || unregistering}
                     >
                       <LogOut className="w-5 h-5 mr-2" />
