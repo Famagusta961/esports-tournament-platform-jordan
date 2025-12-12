@@ -31,12 +31,6 @@ type TeamMember = {
   username?: string;
 };
 
-type Game = {
-  _row_id: number;
-  name: string;
-  slug: string;
-};
-
 const TeamPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,20 +38,15 @@ const TeamPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
-  const [games, setGames] = useState<Game[]>([]);
   const [user, setUser] = useState<{ username: string; id: string; email: string } | null>(null);
 
   useEffect(() => {
-    console.log('TeamPage v3-FORCED-UPDATE: teamId param', id);
-console.log('TeamPage v3-FORCED-UPDATE: Bundle should be NEW at', new Date().toISOString());
     if (id) {
-      console.log('TeamPage: useEffect triggered with teamId:', id);
       loadTeamData(parseInt(id));
     } else {
-      console.log('TeamPage: useEffect triggered but no teamId found');
       setIsLoading(false);
     }
-  }, [id, games]);
+  }, [id]);
 
   const loadUser = async () => {
     try {
@@ -68,110 +57,28 @@ console.log('TeamPage v3-FORCED-UPDATE: Bundle should be NEW at', new Date().toI
     }
   };
 
-  // Load games for game name fallback
-  const loadGames = async () => {
-    try {
-      const response = await fetch('/api/v2/database/games?select=name,slug,_row_id');
-      if (response.ok) {
-        const gamesData = await response.json();
-        setGames(gamesData || []);
-      }
-    } catch (error) {
-      console.error('Failed to load games:', error);
-    }
-  };
-
-  // Load user and games immediately
   useEffect(() => {
     loadUser();
-    loadGames();
   }, []);
 
   const loadTeamData = async (id: number) => {
-    console.log('TeamPage.loadTeamData: Starting to load team', id);
-    
-    // Add timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      console.error('TeamPage.loadTeamData: Timeout reached - failed to load team');
-      toast({
-        title: "Error", 
-        description: "Failed to load team - request timeout",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-      setTeam(null);
-      setMembers([]);
-    }, 10000); // 10 second timeout
-    
     setIsLoading(true);
     try {
-      console.log('TeamPage.loadTeamData: Loading team', id);
-      console.log('TeamPage.loadTeamData: Calling teamService.getTeamById with payload:', { action: 'get_team_by_id', team_id: id });
-      console.log("TeamPage: calling getTeamById with", id);
-      
+      console.log('Loading team', id);
       const result = await teamService.getTeamById(id);
+      console.log('Team data result:', result);
       
-      clearTimeout(timeout);
-      console.log('TeamPage.loadTeamData: API result', result);
-      
-      if (result) {
-        console.log('TeamPage.loadTeamData: Team loaded successfully', result);
-        
-        // Backwards-compatible mapping for both old and new API responses
-        const teamData = result.team || {};
-        const membersData = result.members ?? teamData.members ?? [];
-        
-        // Create games lookup for game name fallback
-        const gamesById = games.reduce((acc, game) => {
-          acc[game._row_id] = game;
-          return acc;
-        }, {} as Record<number, Game>);
-        
-        // Handle member count backwards compatibility
-        const memberCount = teamData.member_count ?? membersData.length ?? 0;
-        
-        // Handle captain username backwards compatibility
-        let captainName = teamData.captain_username;
-        if (!captainName) {
-          const captain = membersData.find(m => m.role === 'captain');
-          captainName = captain?.username || membersData[0]?.username || 'Unknown Captain';
-        }
-        
-        // Handle game name backwards compatibility
-        const gameName = team?.game_name ?? (team?.game_id ? gamesById?.[team.game_id]?.name : undefined) ?? 'Unknown Game';
-        
-        console.log('TeamPage.loadTeamData: Mapped data:', {
-          gameName,
-          memberCount,
-          captainName,
-          membersCount: membersData.length,
-          gameId: teamData.game_id
-        });
-        
-        // Ensure required fields have defaults to prevent undefined errors
-        const safeTeam = {
-          ...teamData,
-          name: teamData.name || 'Unknown Team',
-          tag: teamData.tag || '',
-          captain_username: captainName,
-          member_count: memberCount,
-          created_at: teamData.created_at || Date.now() / 1000,
-          game_name: gameName,
-          description: teamData.description || ''
-        };
-        
-        setTeam(safeTeam);
-        setMembers(membersData);
+      if (result && result.team) {
+        setTeam(result.team);
+        setMembers(result.members || []);
       } else {
-        console.log('TeamPage.loadTeamData: No team data found in result');
         throw new Error('Team data not found');
       }
     } catch (error) {
-      clearTimeout(timeout);
-      console.error('TeamPage.loadTeamData: Failed to load team data:', error);
+      console.error('Failed to load team data:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load team data",
+        description: "Failed to load team data",
         variant: "destructive"
       });
       setTeam(null);
