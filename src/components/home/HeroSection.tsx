@@ -47,8 +47,8 @@ const HeroSection = () => {
               <img 
                 src="/arenajo-logo-square.png" 
                 alt="ArenaJo" 
-                className="w-16 h-16 object-contain"
-                style={{width: '64px', height: '64px'}}
+                className="w-24 h-24 sm:w-16 sm:h-16 object-contain"
+                style={{width: '96px', height: '96px'}}
               />
               <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary blur-xl opacity-30" />
             </div>
