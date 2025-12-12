@@ -849,20 +849,21 @@ export const teamService = {
     try {
       console.log('teamService.getTeamById: Fetching team', teamId);
       
-      const response = await functions.post('team-view', { 
+      const response = await functions.post('team-management', { 
+        action: 'get_team_by_id',
         team_id: teamId 
       });
       
       console.log('teamService.getTeamById: Response', { 
         success: response?.success, 
         hasTeam: !!response?.team,
-        hasMembers: !!response?.members
+        hasMembers: !!response?.team?.members
       });
       
       if (response?.success) {
         return {
           team: response.team,
-          members: response.members || []
+          members: response.team?.members || []
         };
       }
       throw new Error(response?.error || 'Failed to load team');
