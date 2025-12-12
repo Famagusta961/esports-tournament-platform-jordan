@@ -746,32 +746,28 @@ export const userService = {
   }
 };
 
-// Team service
+// Team service using edge functions
 export const teamService = {
   // Get user's teams
   getUserTeams: async () => {
     try {
-      const user = await auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Get teams where user is a member
-      const { data: memberships } = await db.query('team_members', {
-        username: 'eq.' + (user as { username: string }).username,
-        is_active: 'eq.1'
+      console.log('teamService.getUserTeams: Fetching user teams via edge function');
+      
+      // Use the updated team-management function
+      const response = await functions.get('team-management', { 
+        action: 'get_user_teams' 
       });
-
-      if (!memberships?.length) {
-        return [];
-      }
-
-      const teamIds = memberships.map(m => m.team_id);
-      const { data: teams } = await db.query('teams', {
-        '_row_id': `in.(${teamIds.join(',')})`
+      
+      console.log('teamService.getUserTeams: Response', { 
+        success: response?.success, 
+        teams: response?.teams?.length || 0 
       });
-
-      return teams || [];
+      
+      if (response && response.success && response.teams) {
+        return response.teams;
+      } else {
+        throw new Error(response?.error || 'Failed to fetch teams');
+      }
     } catch (error) {
       handleApiError(error, 'Failed to fetch user teams');
     }
