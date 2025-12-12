@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Layout from '@/components/layout/Layout';
 import { useToast } from '@/hooks/use-toast';
-import { tournamentService } from '@/lib/api';
+import { tournamentService } from '@/lib/api-new';
 
 const mockTournament = {
   id: '1',

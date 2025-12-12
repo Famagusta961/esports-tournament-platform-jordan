@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useToast } from '@/hooks/use-toast';
-import { tournamentService, gameService } from '@/lib/api';
+import { tournamentService, gameService } from '@/lib/api-new';
 
 const getStatusBadge = (status: string) => {
   switch (status) {

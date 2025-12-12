@@ -184,7 +184,20 @@ export const tournamentService = {
             dbParams.status = 'in.(registration,upcoming,live,completed)';
           }
 
-          const { data: tournaments } = await db.query('tournaments', dbParams);
+          const { data: response } = await db.query('tournaments', dbParams);
+
+          // Handle both array and single object response formats
+          let tournaments = [];
+          if (Array.isArray(response)) {
+            tournaments = response; // Array format
+          } else if (response && typeof response === 'object') {
+            tournaments = [response]; // Single object format wrapped in array
+          }
+
+          console.log("tournamentService.list: Processed tournament array", { 
+            count: tournaments.length, 
+            sample: tournaments.slice(0, 2).map(t => ({ id: t._row_id, title: t.title }))
+          });
 
           // Join with games data - handle both slug and numeric game_id
           let tournamentsWithGames = await Promise.all(tournaments?.map(async (tournament) => {
@@ -287,88 +300,9 @@ export const tournamentService = {
         try {
           console.log("tournamentService.getById: Using database SDK fallback", { id, source: "database" });
           
-          // Get tournament from database
-          const { data: tournaments } = await db.query('tournaments', { 
-            _row_id: 'eq.' + id
-            // Don't filter by status - show all tournaments including draft
-          });
-
-          const tournament = tournaments?.[0];
-          console.log("tournamentService.getById: Database query result", { id, tournamentCount: tournaments?.length, firstTournament: tournament });
-          
-          if (!tournament) {
-            console.log("tournamentService.getById: Tournament not found in database", { id, tournaments });
-            return { success: false, error: 'Tournament not found' };
-          }
-
-          // Get game info - handle both slug and numeric game_id
-          let gameInfo = null;
-          if (tournament.game_id) {
-            try {
-              console.log("tournamentService.getById: Looking up game", { gameId: tournament.game_id, tournamentId: id });
-              
-              // Try by slug first (most common case)
-              const { data: games } = await db.query('games', { slug: 'eq.' + tournament.game_id });
-              const game = games?.[0];
-              if (game) {
-                gameInfo = {
-                  game_name: game.name,
-                  game_slug: game.slug
-                };
-                console.log("tournamentService.getById: Found game by slug", { gameName: game.name, gameSlug: game.slug });
-              } else {
-                // Try by numeric ID if slug didn't work
-                const gameIdNum = parseInt(tournament.game_id as string);
-                if (!isNaN(gameIdNum)) {
-                  console.log("tournamentService.getById: Trying numeric ID", { gameIdNum });
-                  const { data: gamesById } = await db.query('games', { _row_id: 'eq.' + gameIdNum });
-                  const gameById = gamesById?.[0];
-                  if (gameById) {
-                    gameInfo = {
-                      game_name: gameById.name,
-                      game_slug: gameById.slug
-                    };
-                    console.log("tournamentService.getById: Found game by numeric ID", { gameName: gameById.name, gameSlug: gameById.slug });
-                  }
-                }
-              }
-              
-              if (!gameInfo) {
-                console.warn("tournamentService.getById: Game not found", { gameId: tournament.game_id, tournamentId: id });
-                gameInfo = { game_name: 'Unknown Game', game_slug: 'unknown' };
-              }
-            } catch (gameError) {
-              console.error('tournamentService.getById: Failed to fetch game', { gameError, gameId: tournament.game_id, tournamentId: id });
-              gameInfo = { game_name: 'Unknown Game', game_slug: 'unknown' };
-            }
-          }
-
-          // Get creator info
-          let creatorInfo = null;
-          if (tournament._created_by) {
-            const { data: users } = await db.query('users', { _row_id: 'eq.' + tournament._created_by });
-            const user = users?.[0];
-            if (user) {
-              creatorInfo = {
-                creator_username: user.username,
-                creator_avatar: user.avatar_url
-              };
-            }
-          }
-
-          const result = {
-            success: true,
-            tournament: {
-              ...tournament,
-              ...gameInfo,
-              ...creatorInfo,
-              user_registration: null, // No user-specific data for public view
-              is_admin: false
-            }
-          };
-          
-          console.log("tournamentService.getById: Database fallback successful", { id, hasGameInfo: !!gameInfo });
-          return result;
+          // Use simple tournament API
+          const { getTournamentSimple } = await import('./simple-tournament-api');
+          return await getTournamentSimple(id);
         } catch (dbError) {
           console.error("tournamentService.getById: Database fallback failed", { id, error: dbError });
           handleApiError(dbError, 'Failed to fetch tournament details from database');
