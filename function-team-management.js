@@ -43,11 +43,14 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ success: false, error: "Valid Team ID required" }, { status: 400 });
         }
 
-        // Get team details
+        // Get team details with captain username and member count
         const teamStmt = conn.prepare(`
           SELECT t._row_id, t.name, t.tag, t.description, t.logo_url, t.captain_user_uuid,
-                 t.invite_code, t._created_at
-          FROM teams_proper t 
+                 t.invite_code, t._created_at,
+                 COALESCE(u.username, 'Unknown Captain') as captain_username,
+                 (SELECT COUNT(*) FROM team_members_proper tm WHERE tm.team_row_id = t._row_id) as member_count
+          FROM teams_proper t
+          LEFT JOIN user_profiles u ON u.user_uuid = t.captain_user_uuid
           WHERE t._row_id = ?
         `);
         const team = await teamStmt.get([body.team_id]);
@@ -68,10 +71,12 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ success: false, error: "Access denied" }, { status: 403 });
         }
 
-        // Get team members
+        // Get team members with usernames
         const membersStmt = conn.prepare(`
-          SELECT tm.user_uuid, tm.role, tm._created_at as joined_at
+          SELECT tm.user_uuid, tm.role, tm._created_at as joined_at,
+                 COALESCE(u.username, 'Unknown User') as username
           FROM team_members_proper tm 
+          LEFT JOIN user_profiles u ON u.user_uuid = tm.user_uuid
           WHERE tm.team_row_id = ?
           ORDER BY tm._created_at ASC
         `);
@@ -86,10 +91,13 @@ export default async function(req: Request): Promise<Response> {
             description: team.description || '',
             logo_url: team.logo_url,
             captain_id: team.captain_user_uuid,
-            invite_code: team.invite_code,
+            captain_username: team.captain_username,
             created_at: team._created_at,
-            members: members || []
-          }
+            member_count: team.member_count || 0,
+            status: 'active',
+            game_name: 'Multi-game'
+          },
+          members: members || []
         });
 
       case 'create':

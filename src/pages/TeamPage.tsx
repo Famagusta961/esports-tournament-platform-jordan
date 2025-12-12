@@ -28,6 +28,7 @@ type TeamMember = {
   user_uuid: string;
   role: 'captain' | 'member' | 'co_captain';
   joined_at: number;
+  username?: string;
 };
 
 const TeamPage = () => {
@@ -210,7 +211,7 @@ const TeamPage = () => {
                     <span>•</span>
                     <span>{team.game_name || 'Unknown Game'}</span>
                     <span>•</span>
-                    <span>{team.member_count || 0} members</span>
+                    <span>{members.length} members</span>
                   </div>
                 </div>
               </div>
@@ -259,7 +260,7 @@ const TeamPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary">
-                  {team.member_count}/10
+                  {members.length}/10
                 </div>
                 <div className="text-sm text-muted-foreground">Active Members</div>
               </CardContent>
@@ -315,11 +316,11 @@ const TeamPage = () => {
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-10 h-10">
                           <AvatarFallback>
-                            {(member.user_uuid?.substring(0, 6).toUpperCase() || 'U')}
+                            {(member.username?.substring(0, 2).toUpperCase() || member.user_uuid?.substring(0, 6).toUpperCase() || 'U')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">Team Member</div>
+                          <div className="font-medium">{member.username || 'Team Member'}</div>
                           <div className="text-xs text-muted-foreground">
                             {(member.user_uuid?.substring(0, 8) || 'UUID')}... • Joined {formatDate(member.joined_at)}
                           </div>
