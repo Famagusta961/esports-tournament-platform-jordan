@@ -16,6 +16,13 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
 import auth from '@/lib/shared/kliv-auth.js';
@@ -45,6 +52,17 @@ type TeamMember = {
   status: string;
 };
 
+type Game = {
+  _row_id: number;
+  name: string;
+  short_name: string;
+  slug: string;
+  description: string;
+  platforms: string;
+  formats: string;
+  is_active: boolean;
+};
+
 const TeamManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -61,13 +79,15 @@ const TeamManagement = () => {
     name: '',
     tag: '',
     description: '',
-    game: ''
+    game_id: 0
   });
   const [inviteEmail, setInviteEmail] = useState('');
+  const [games, setGames] = useState<Game[]>([]);
 
   useEffect(() => {
     loadUser();
     loadTeams();
+    loadGames();
     checkTournamentContext();
   }, []);
 
@@ -77,6 +97,16 @@ const TeamManagement = () => {
       setUser(currentUser);
     } catch (error) {
       console.error('Failed to load user:', error);
+    }
+  };
+
+  const loadGames = async () => {
+    try {
+      const db = await import('@/lib/shared/kliv-database.js').then(m => m.default);
+      const gamesData = await db.query('games', { is_active: 'eq.1' });
+      setGames(gamesData || []);
+    } catch (error) {
+      console.error('Failed to load games:', error);
     }
   };
 
@@ -152,10 +182,10 @@ const TeamManagement = () => {
       return;
     }
 
-    if (!createFormData.name || !createFormData.tag) {
+    if (!createFormData.name || !createFormData.tag || !createFormData.game_id) {
       toast({
         title: "Validation Error",
-        description: "Please fill in team name and tag",
+        description: "Please fill in team name, tag, and select a game",
         variant: "destructive"
       });
       return;
@@ -165,7 +195,8 @@ const TeamManagement = () => {
       const result = await teamService.create({
         name: createFormData.name,
         description: createFormData.description,
-        tag: createFormData.tag
+        tag: createFormData.tag,
+        game_id: createFormData.game_id
       });
       
       if (result && result.success) {
@@ -176,7 +207,7 @@ const TeamManagement = () => {
         });
         
         setShowCreateForm(false);
-        setCreateFormData({ name: '', tag: '', description: '', game: '' });
+        setCreateFormData({ name: '', tag: '', description: '', game_id: 0 });
         loadTeams();
         
         // Check if we should redirect back to a tournament
@@ -601,6 +632,25 @@ const TeamManagement = () => {
                       onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
                       rows={3}
                     />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="team_game">Primary Game *</Label>
+                    <Select
+                      value={createFormData.game_id.toString()}
+                      onValueChange={(value) => setCreateFormData(prev => ({ ...prev, game_id: parseInt(value) }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your team's primary game" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {games.map((game) => (
+                          <SelectItem key={game._row_id} value={game._row_id.toString()}>
+                            {game.name} ({game.short_name})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div className="flex space-x-2">

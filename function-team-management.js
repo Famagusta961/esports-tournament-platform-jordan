@@ -46,7 +46,7 @@ export default async function(req: Request): Promise<Response> {
         // Get team details with captain username and member count
         const teamStmt = conn.prepare(`
           SELECT t._row_id, t.name, t.tag, t.description, t.logo_url, t.captain_user_uuid,
-                 t.invite_code, t._created_at,
+                 t.invite_code, t._created_at, t.game_id,
                  (SELECT COUNT(*) FROM team_members_proper tm WHERE tm.team_row_id = t._row_id) as member_count
           FROM teams_proper t
           WHERE t._row_id = ?
@@ -91,7 +91,7 @@ export default async function(req: Request): Promise<Response> {
             created_at: team._created_at,
             member_count: team.member_count || 0,
             status: 'active',
-            game_name: 'Multi-game'
+            game_name: team.game_id ? 'Unknown Game' : 'Not Set' // Will be updated below
           },
           members: (members || []).map(member => ({
             user_uuid: member.user_uuid,
@@ -101,12 +101,23 @@ export default async function(req: Request): Promise<Response> {
           }))
         };
         
+        // Get actual game name if game_id is available
+        if (team.game_id) {
+          const gameStmt = conn.prepare("SELECT name FROM games WHERE _row_id = ?");
+          const game = await gameStmt.get([team.game_id]);
+          response.team.game_name = game ? game.name : 'Unknown Game';
+        }
+        
         console.log('get_team_by_id response:', JSON.stringify(response, null, 2));
         return Response.json(response);
 
       case 'create':
         if (!body.name || body.name.length < 2) {
           return Response.json({ success: false, error: "Team name required" }, { status: 400 });
+        }
+        
+        if (!body.game_id || typeof body.game_id !== 'number' || body.game_id <= 0) {
+          return Response.json({ success: false, error: "Game selection required" }, { status: 400 });
         }
 
         // Check if team name already exists
@@ -121,8 +132,8 @@ export default async function(req: Request): Promise<Response> {
         
         // Use transaction for atomic team + captain creation
         const createTeamStmt = conn.prepare(`
-          INSERT INTO teams_proper (name, description, tag, captain_user_uuid, invite_code, _created_by, _created_at, _updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO teams_proper (name, description, tag, captain_user_uuid, invite_code, game_id, _created_by, _created_at, _updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         
         const createMemberStmt = conn.prepare(`
@@ -137,7 +148,8 @@ export default async function(req: Request): Promise<Response> {
             body.description || null, 
             body.tag || null, 
             userUuid, 
-            inviteCode, 
+            inviteCode,
+            body.game_id,
             userUuid, 
             now, 
             now
@@ -193,13 +205,14 @@ export default async function(req: Request): Promise<Response> {
         // Update team
         const updateStmt = conn.prepare(`
           UPDATE teams_proper 
-          SET name = ?, description = ?, tag = ?, _updated_at = ?
+          SET name = ?, description = ?, tag = ?, game_id = ?, _updated_at = ?
           WHERE _row_id = ? AND captain_user_uuid = ?
         `);
         await updateStmt.run([
           body.name, 
           body.description || null, 
-          body.tag || null, 
+          body.tag || null,
+          body.game_id || null,
           now, 
           body.team_id, 
           userUuid

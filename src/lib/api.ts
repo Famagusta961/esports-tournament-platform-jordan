@@ -778,6 +778,7 @@ export const teamService = {
     name: string;
     description?: string;
     tag?: string;
+    game_id: number;
   }) => {
     try {
       const response = await functions.post('team-management', {
