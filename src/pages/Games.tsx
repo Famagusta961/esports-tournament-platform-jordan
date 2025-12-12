@@ -9,6 +9,7 @@ const games = [
     name: 'PUBG Mobile',
     description: 'Battle Royale shooter where 100 players fight to be the last one standing.',
     color: 'from-yellow-500 to-orange-600',
+    image: '/content/games/pubg-.jpg',
     activeTournaments: 8,
     totalPlayers: '5,200',
     platforms: ['Mobile'],
@@ -19,6 +20,7 @@ const games = [
     name: 'EA FC 25',
     description: 'The world\'s most popular football simulation game.',
     color: 'from-green-500 to-emerald-600',
+    image: '/content/games/EA FC 25.jpg',
     activeTournaments: 12,
     totalPlayers: '3,800',
     platforms: ['PS5', 'Xbox', 'PC'],
@@ -29,6 +31,7 @@ const games = [
     name: 'Valorant',
     description: 'Tactical 5v5 character-based shooter with unique agent abilities.',
     color: 'from-red-500 to-pink-600',
+    image: '/content/games/valorant-listing-scaled.jpg',
     activeTournaments: 5,
     totalPlayers: '2,100',
     platforms: ['PC'],
@@ -59,6 +62,7 @@ const games = [
     name: 'League of Legends',
     description: 'Strategic 5v5 MOBA where teamwork leads to victory.',
     color: 'from-blue-500 to-cyan-600',
+    image: '/content/games/league-of-legends-pc-game-cover.jpg',
     activeTournaments: 3,
     totalPlayers: '1,200',
     platforms: ['PC'],
@@ -69,6 +73,7 @@ const games = [
     name: 'Rocket League',
     description: 'High-octane soccer with rocket-powered cars.',
     color: 'from-sky-500 to-blue-600',
+    image: '/content/games/EGS_RocketLeague_PsyonixLLC_S1_2560x1440-4c231557ef0a0626fbb97e0bd137d837.jpg',
     activeTournaments: 2,
     totalPlayers: '800',
     platforms: ['PC', 'Console'],
@@ -79,6 +84,7 @@ const games = [
     name: 'Tekken 8',
     description: 'Premier 3D fighting game featuring intense combat.',
     color: 'from-red-600 to-rose-600',
+    image: '/content/games/tekken-7-pc-game-steam-cover.jpg',
     activeTournaments: 3,
     totalPlayers: '950',
     platforms: ['PS5', 'Xbox', 'PC'],
@@ -110,14 +116,28 @@ const Games = () => {
                 className="group relative overflow-hidden rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover-lift animate-slide-up"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
-                {/* Gradient Header */}
+                {/* Game Image or Gradient Header */}
                 <div className={`h-32 bg-gradient-to-br ${game.color} relative overflow-hidden`}>
-                  <div className="absolute inset-0 bg-black/20" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-display font-bold text-4xl text-white/90">
-                      {game.name.split(' ')[0]}
-                    </span>
-                  </div>
+                  {game.image ? (
+                    <>
+                      <img 
+                        src={game.image} 
+                        alt={game.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/20 to-black/40" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-black/20" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="font-display font-bold text-4xl text-white/90">
+                          {game.name.split(' ')[0]}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   {/* Active Tournaments Badge */}
                   <Badge className="absolute top-3 right-3 bg-black/50 text-white border-0">
                     <Trophy className="w-3 h-3 mr-1" />

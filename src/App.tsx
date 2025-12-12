@@ -26,6 +26,7 @@ import EditTournament from "./pages/admin/EditTournament";
 import AdminUsers from "./pages/admin/Users";
 import AdminWallet from "./pages/admin/Wallet";
 import AdminSettings from "./pages/admin/Settings";
+import GameImageManager from "./pages/admin/GameImageManager";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="users" element={<AdminUsers />} />
             <Route path="wallet" element={<AdminWallet />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="game-images" element={<GameImageManager />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

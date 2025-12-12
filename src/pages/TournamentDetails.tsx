@@ -202,6 +202,21 @@ const TournamentDetails = () => {
     return colors[gameName] || 'from-gray-500 to-gray-600';
   };
 
+  // Get game image
+  const getGameImage = (gameName: string) => {
+    const images: Record<string, string> = {
+      'PUBG Mobile': '/content/games/pubg-.jpg',
+      'EA FC 25': '/content/games/EA FC 25.jpg',
+      'EA FC': '/content/games/EA FC 25.jpg',
+      'Valorant': '/content/games/valorant-listing-scaled.jpg',
+      'COD Mobile': '/content/games/COD.jpg', // Will need to upload
+      'Fortnite': '/content/games/fortnite.jpg', // Will need to upload
+      'League of Legends': '/content/games/league-of-legends-pc-game-cover.jpg',
+      'LoL': '/content/games/league-of-legends-pc-game-cover.jpg',
+    };
+    return images[gameName] || null;
+  };
+
   const canJoin = (tournament.status === 'registration' || tournament.status === 'draft') && 
                    tournament.current_players < tournament.max_players;
 
@@ -217,9 +232,21 @@ const TournamentDetails = () => {
 
           {/* Header Card */}
           <div className="relative overflow-hidden rounded-2xl bg-card border border-border mb-8">
-            {/* Gradient Header */}
+            {/* Game Image or Gradient Header */}
             <div className={`h-32 sm:h-40 bg-gradient-to-r ${getGameColor(tournament.game_name || 'Unknown')} relative`}>
-              <div className="absolute inset-0 bg-black/40" />
+              {getGameImage(tournament.game_name || '') && (
+                <>
+                  <img 
+                    src={getGameImage(tournament.game_name || '')} 
+                    alt={tournament.game_name || 'Game'}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/60" />
+                </>
+              ) || (
+                <div className="absolute inset-0 bg-black/40" />
+              )}
               <div className="absolute bottom-4 left-6 flex items-center space-x-3">
                 <Badge variant="secondary" className="bg-black/50 text-white border-0">
                   {tournament.game_name || 'Unknown'}
