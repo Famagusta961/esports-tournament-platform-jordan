@@ -384,6 +384,8 @@ const GameImageManager = () => {
                 <p>Saving: {saving ? 'YES ⏳' : 'NO ✅'}</p>
                 <p>Pool images: {uploadedImages.length}</p>
                 <p>Pool showing: {showUploadPool ? 'YES ✅' : 'NO ❌'}</p>
+                <p><strong>Content SDK:</strong> {content ? 'LOADED ✅' : 'NOT LOADED ❌'}</p>
+                <p><strong>File inputs:</strong> {Object.keys(fileInputRefs.current).length} refs ready</p>
                 <p><strong>Instructions:</strong> Click any game card image to upload directly!</p>
               </div>
               {hasChanges && (
@@ -426,13 +428,57 @@ const GameImageManager = () => {
               )}
               {/* Debug button - always show for testing */}
               {!hasChanges && (
-                <Button 
-                  onClick={() => setHasChanges(true)}
-                  variant="outline"
-                  className="text-xs"
-                >
-                  🔧 Test Save UI
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => setHasChanges(true)}
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    🔧 Test Save UI
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      console.log('🧪 Testing content upload...');
+                      try {
+                        // Create a test blob image
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 100;
+                        canvas.height = 100;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#00FF00';
+                        ctx.fillRect(0, 0, 100, 100);
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillText('TEST', 30, 55);
+                        
+                        const blob = await new Promise<Blob>((resolve) => {
+                          canvas.toBlob((blob) => resolve(blob!), 'image/png');
+                        });
+                        
+                        const testFile = new File([blob], 'test-upload.png', { type: 'image/png' });
+                        console.log('🧪 Test file created:', testFile);
+                        
+                        const result = await content.uploadFile(testFile, '/content/games/', 'test-upload.png');
+                        console.log('🧪 Upload successful:', result);
+                        
+                        toast({
+                          title: "Test upload successful!",
+                          description: "Content SDK is working properly.",
+                        });
+                      } catch (error) {
+                        console.error('🧪 Test upload failed:', error);
+                        toast({
+                          title: "Test upload failed",
+                          description: error instanceof Error ? error.message : "Upload test failed",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    🧪 Test Upload
+                  </Button>
+                </div>
               )}
               <Button 
                 variant="outline" 
@@ -478,7 +524,15 @@ const GameImageManager = () => {
                       {/* Image Container - Clickable */}
                       <div 
                         className="relative mb-3 cursor-pointer transition-all duration-200 hover:opacity-80"
-                        onClick={() => fileInputRefs.current[game]?.click()}
+                        onClick={() => {
+                          console.log(`🔴 CLICKED: Game ${game} image container`);
+                          if (fileInputRefs.current[game]) {
+                            console.log(`🔴 INPUT: Found file input for ${game}, clicking...`);
+                            fileInputRefs.current[game].click();
+                          } else {
+                            console.log(`❌ ERROR: No file input found for ${game}`);
+                          }
+                        }}
                       >
                         {imagePath ? (
                           <>
@@ -544,13 +598,33 @@ const GameImageManager = () => {
                         )}
                       </div>
                       
-                      {/* Upload hint */}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {hasChanges && !areImagesEqual(imagePath, originalGameImages[game as keyof typeof originalGameImages]) 
-                          ? "Pending: Save changes to apply" 
-                          : (imagePath ? "Click to replace" : "Click to upload image")
-                        }
-                      </p>
+                      {/* Debug test buttons */}
+                      <div className="mt-2 flex gap-1 justify-center">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log(`🔧 TEST: Clicking input for ${game} directly`);
+                            if (fileInputRefs.current[game]) {
+                              fileInputRefs.current[game].click();
+                            } else {
+                              console.log(`❌ No input found for ${game}`);
+                            }
+                          }}
+                          className="text-xs bg-blue-500 text-white px-2 py-1 rounded"
+                        >
+                          Test Click
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log(`🔧 INPUTS: Available refs:`, Object.keys(fileInputRefs.current).join(', '));
+                            console.log(`🔧 INPUT: Does ${game} exist?`, !!fileInputRefs.current[game]);
+                          }}
+                          className="text-xs bg-purple-500 text-white px-2 py-1 rounded"
+                        >
+                          Debug
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
