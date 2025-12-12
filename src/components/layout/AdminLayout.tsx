@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import ProtectedRoute from '@/components/admin/ProtectedAdminRoute';
+import WhatsAppButton from '@/components/ui/WhatsAppButton';
 import auth from '@/lib/shared/kliv-auth.js';
 import { useToast } from '@/hooks/use-toast';
 
@@ -179,6 +180,7 @@ const AdminLayout = () => {
             <Outlet />
           </div>
         </div>
+        <WhatsAppButton />
       </div>
     </ProtectedRoute>
   );

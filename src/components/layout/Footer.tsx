@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Trophy, Gamepad2, Users, Mail, MessageSquare } from 'lucide-react';
+import { Trophy, Gamepad2, Users, Mail, MessageSquare, Phone } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -77,6 +77,12 @@ const Footer = () => {
                 <a href="mailto:support@arenajo.com" className="text-muted-foreground hover:text-primary transition-colors flex items-center space-x-2">
                   <Mail className="w-4 h-4" />
                   <span>support@arenajo.com</span>
+                </a>
+              </li>
+              <li>
+                <a href="tel:+962792626262" className="text-muted-foreground hover:text-primary transition-colors flex items-center space-x-2">
+                  <Phone className="w-4 h-4" />
+                  <span>+962 (0) 79 262 6262</span>
                 </a>
               </li>
               <li>
