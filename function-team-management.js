@@ -152,8 +152,16 @@ export default async function(req: Request): Promise<Response> {
           }
         });
 
+      case 'health':
+        return Response.json({ 
+          success: true, 
+          version: "rollback_942cadd",
+          message: "Team management function is healthy",
+          timestamp: Math.floor(Date.now() / 1000)
+        });
+
       default:
-        return Response.json({ success: false, error: "Invalid action" }, { status: 400 });
+        return Response.json({ success: false, version: "rollback_942cadd", error: "Invalid action" }, { status: 400 });
     }
   } catch (error) {
     console.error('Team management error:', error);
