@@ -41,7 +41,8 @@ const TeamPage = () => {
   const [user, setUser] = useState<{ username: string; id: string; email: string } | null>(null);
 
   useEffect(() => {
-    console.log('TeamPage v2: teamId param', id);
+    console.log('TeamPage v3-FORCED-UPDATE: teamId param', id);
+console.log('TeamPage v3-FORCED-UPDATE: Bundle should be NEW at', new Date().toISOString());
     if (id) {
       console.log('TeamPage: useEffect triggered with teamId:', id);
       loadTeamData(parseInt(id));
