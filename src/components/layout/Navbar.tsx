@@ -51,7 +51,7 @@ const Navbar = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Home', href: '/', icon: Home, hideOnDesktop: true },
+    { name: 'Home', href: '/', icon: Home },
     { name: 'Tournaments', href: '/tournaments', icon: Trophy },
     { name: 'Games', href: '/games', icon: Gamepad2 },
     { name: 'Leaderboard', href: '/leaderboard', icon: Users },

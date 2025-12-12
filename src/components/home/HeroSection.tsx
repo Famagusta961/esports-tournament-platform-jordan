@@ -42,17 +42,17 @@ const HeroSection = () => {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-20 md:py-20 py-12">
         <div className="text-center space-y-8">
           {/* Logo and Badge */}
-          <div className="flex flex-col items-center space-y-6 animate-slide-up hidden lg:block">
-            <div className="relative inline-flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-6 animate-slide-up hidden lg:block mx-auto">
+            <div className="relative inline-flex items-center justify-center mx-auto">
               <img 
                 src="/arenajo-logo-square.png" 
                 alt="ArenaJo" 
-                className="w-24 h-24 sm:w-16 sm:h-16 object-contain"
+                className="w-24 h-24 sm:w-16 sm:h-16 object-contain mx-auto"
                 style={{width: '96px', height: '96px'}}
               />
               <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary blur-xl opacity-30" />
             </div>
-            <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30">
+            <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mx-auto">
               <Zap className="w-4 h-4 text-primary" />
               <span className="font-gaming text-sm text-primary">Jordan's #1 Esports Platform</span>
             </div>
