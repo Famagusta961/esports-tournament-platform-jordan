@@ -65,6 +65,7 @@ const TeamManagement = () => {
   useEffect(() => {
     loadUser();
     loadTeams();
+    checkTournamentContext();
   }, []);
 
   const loadUser = async () => {
@@ -73,6 +74,22 @@ const TeamManagement = () => {
       setUser(currentUser);
     } catch (error) {
       console.error('Failed to load user:', error);
+    }
+  };
+
+  const checkTournamentContext = () => {
+    const tournamentContext = sessionStorage.getItem('tournamentContext');
+    if (tournamentContext) {
+      const context = JSON.parse(tournamentContext);
+      toast({
+        title: `🎯 Create Team for ${context.title}`,
+        description: `Create a team to join the ${context.game_name} tournament: ${context.title}`,
+        duration: 6000
+      });
+      // Clear the context after showing
+      sessionStorage.removeItem('tournamentContext');
+      // Also show the create form automatically
+      setShowCreateForm(true);
     }
   };
 
@@ -150,13 +167,23 @@ const TeamManagement = () => {
       
       if (result && result.success) {
         toast({
-          title: "Team Created!",
-          description: `${createFormData.name} has been successfully created`,
+          title: "🎉 Team Created Successfully!",
+          description: `${createFormData.name} has been created. You can now join tournaments with your team!`,
+          duration: 5000
         });
         
         setShowCreateForm(false);
         setCreateFormData({ name: '', tag: '', description: '', game: '' });
         loadTeams();
+        
+        // Check if we should redirect back to a tournament
+        const redirectToTournament = sessionStorage.getItem('redirectToTournamentAfterTeamCreation');
+        if (redirectToTournament) {
+          sessionStorage.removeItem('redirectToTournamentAfterTeamCreation');
+          setTimeout(() => {
+            navigate(redirectToTournament);
+          }, 1500);
+        }
       } else {
         throw new Error(result?.error || 'Failed to create team');
       }

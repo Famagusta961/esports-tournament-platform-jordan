@@ -357,6 +357,7 @@ const TournamentDetails = () => {
                         title: tournament.title,
                         game_name: tournament.game_name
                       }));
+                      sessionStorage.setItem('redirectToTournamentAfterTeamCreation', `/tournaments/${tournament._row_id}`);
                       
                       toast({
                         title: "👥 Team Creation",
