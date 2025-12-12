@@ -856,16 +856,19 @@ export const teamService = {
         team_id: teamId 
       });
       
-      console.log('teamService.getTeamById: Response', { 
+      console.log('teamService.getTeamById: Full response:', response);
+      console.log('teamService.getTeamById: Response analysis', { 
         success: response?.success, 
         hasTeam: !!response?.team,
-        hasMembers: !!response?.team?.members
+        hasMembers: !!response?.members,
+        game_name: response?.team?.game_name,
+        captain_username: response?.team?.captain_username
       });
       
       if (response?.success) {
         return {
           team: response.team,
-          members: response.team?.members || []
+          members: response.members || []  // Fixed: use response.members, not response.team?.members
         };
       }
       throw new Error(response?.error || 'Failed to load team');
