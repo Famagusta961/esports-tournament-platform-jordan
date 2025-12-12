@@ -31,6 +31,12 @@ type TeamMember = {
   username?: string;
 };
 
+type Game = {
+  _row_id: number;
+  name: string;
+  slug: string;
+};
+
 const TeamPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -38,6 +44,7 @@ const TeamPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [user, setUser] = useState<{ username: string; id: string; email: string } | null>(null);
 
   useEffect(() => {
@@ -50,7 +57,7 @@ console.log('TeamPage v3-FORCED-UPDATE: Bundle should be NEW at', new Date().toI
       console.log('TeamPage: useEffect triggered but no teamId found');
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, games]);
 
   const loadUser = async () => {
     try {
@@ -61,9 +68,23 @@ console.log('TeamPage v3-FORCED-UPDATE: Bundle should be NEW at', new Date().toI
     }
   };
 
-  // Load user immediately
+  // Load games for game name fallback
+  const loadGames = async () => {
+    try {
+      const response = await fetch('/api/v2/database/games?select=name,slug,_row_id');
+      if (response.ok) {
+        const gamesData = await response.json();
+        setGames(gamesData || []);
+      }
+    } catch (error) {
+      console.error('Failed to load games:', error);
+    }
+  };
+
+  // Load user and games immediately
   useEffect(() => {
     loadUser();
+    loadGames();
   }, []);
 
   const loadTeamData = async (id: number) => {
@@ -93,21 +114,56 @@ console.log('TeamPage v3-FORCED-UPDATE: Bundle should be NEW at', new Date().toI
       clearTimeout(timeout);
       console.log('TeamPage.loadTeamData: API result', result);
       
-      if (result && result.team) {
-        console.log('TeamPage.loadTeamData: Team loaded successfully', result.team.name);
+      if (result) {
+        console.log('TeamPage.loadTeamData: Team loaded successfully', result);
+        
+        // Backwards-compatible mapping for both old and new API responses
+        const teamData = result.team || {};
+        const membersData = result.members ?? teamData.members ?? [];
+        
+        // Create games lookup for game name fallback
+        const gamesById = games.reduce((acc, game) => {
+          acc[game._row_id] = game;
+          return acc;
+        }, {} as Record<number, Game>);
+        
+        // Handle member count backwards compatibility
+        const memberCount = teamData.member_count ?? membersData.length ?? 0;
+        
+        // Handle captain username backwards compatibility
+        let captainName = teamData.captain_username;
+        if (!captainName) {
+          const captain = membersData.find(m => m.role === 'captain');
+          captainName = captain?.username || membersData[0]?.username || 'Unknown Captain';
+        }
+        
+        // Handle game name backwards compatibility
+        const gameName = teamData.game_name ?? 
+                        (teamData.game_id && gamesById[teamData.game_id]?.name ? gamesById[teamData.game_id].name : null) ?? 
+                        'Unknown Game';
+        
+        console.log('TeamPage.loadTeamData: Mapped data:', {
+          gameName,
+          memberCount,
+          captainName,
+          membersCount: membersData.length,
+          gameId: teamData.game_id
+        });
+        
         // Ensure required fields have defaults to prevent undefined errors
         const safeTeam = {
-          ...result.team,
-          name: result.team.name || 'Unknown Team',
-          tag: result.team.tag || '',
-          captain_username: result.team.captain_username || 'Unknown Captain',
-          member_count: result.team.member_count || 0,
-          created_at: result.team.created_at || Date.now() / 1000,
-          game_name: result.team.game_name || 'Unknown Game',
-          description: result.team.description || ''
+          ...teamData,
+          name: teamData.name || 'Unknown Team',
+          tag: teamData.tag || '',
+          captain_username: captainName,
+          member_count: memberCount,
+          created_at: teamData.created_at || Date.now() / 1000,
+          game_name: gameName,
+          description: teamData.description || ''
         };
+        
         setTeam(safeTeam);
-        setMembers(result.members || []);
+        setMembers(membersData);
       } else {
         console.log('TeamPage.loadTeamData: No team data found in result');
         throw new Error('Team data not found');
