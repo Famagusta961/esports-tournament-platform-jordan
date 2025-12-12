@@ -226,6 +226,7 @@ export const tournamentService = {
           // Apply game filter after the join if specified
           if (gameFilter && gameFilter !== 'all') {
             console.log('Filtering tournaments by game slug:', gameFilter, 'before filter:', tournamentsWithGames.length);
+            console.log('Tournaments with slugs:', tournamentsWithGames.map(t => ({ id: t._row_id, title: t.title, game_slug: t.game_slug })));
             tournamentsWithGames = tournamentsWithGames.filter(tournament => 
               tournament.game_slug === gameFilter
             );
@@ -293,8 +294,10 @@ export const tournamentService = {
           });
 
           const tournament = tournaments?.[0];
+          console.log("tournamentService.getById: Database query result", { id, tournamentCount: tournaments?.length, firstTournament: tournament });
+          
           if (!tournament) {
-            console.log("tournamentService.getById: Tournament not found in database", { id });
+            console.log("tournamentService.getById: Tournament not found in database", { id, tournaments });
             return { success: false, error: 'Tournament not found' };
           }
 
