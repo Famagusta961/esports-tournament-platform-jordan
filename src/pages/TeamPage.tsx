@@ -40,17 +40,15 @@ const TeamPage = () => {
   const [user, setUser] = useState<{ username: string; id: string; email: string } | null>(null);
 
   useEffect(() => {
-    loadUser();
-  }, []);
-
-  useEffect(() => {
-    if (id && !isLoading) {
+    console.log('TeamPage: teamId param', id);
+    if (id) {
       console.log('TeamPage: useEffect triggered with teamId:', id);
       loadTeamData(parseInt(id));
-    } else if (!id) {
+    } else {
       console.log('TeamPage: useEffect triggered but no teamId found');
+      setIsLoading(false);
     }
-  }, [id, isLoading]);
+  }, [id]);
 
   const loadUser = async () => {
     try {
@@ -61,14 +59,35 @@ const TeamPage = () => {
     }
   };
 
+  // Load user immediately
+  useEffect(() => {
+    loadUser();
+  }, []);
+
   const loadTeamData = async (id: number) => {
     console.log('TeamPage.loadTeamData: Starting to load team', id);
+    
+    // Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.error('TeamPage.loadTeamData: Timeout reached - failed to load team');
+      toast({
+        title: "Error", 
+        description: "Failed to load team - request timeout",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      setTeam(null);
+      setMembers([]);
+    }, 10000); // 10 second timeout
+    
     setIsLoading(true);
     try {
       console.log('TeamPage.loadTeamData: Loading team', id);
+      console.log('TeamPage.loadTeamData: Calling teamService.getTeamById with payload:', { action: 'get_team_by_id', team_id: id });
       
       const result = await teamService.getTeamById(id);
       
+      clearTimeout(timeout);
       console.log('TeamPage.loadTeamData: API result', result);
       
       if (result && result.team) {
@@ -80,6 +99,7 @@ const TeamPage = () => {
         throw new Error('Team data not found');
       }
     } catch (error) {
+      clearTimeout(timeout);
       console.error('TeamPage.loadTeamData: Failed to load team data:', error);
       toast({
         title: "Error",
