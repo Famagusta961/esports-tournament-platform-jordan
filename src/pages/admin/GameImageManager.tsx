@@ -1,24 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Upload, Image, Gamepad2, Check, X, Camera, Trash2 } from 'lucide-react';
+import { Upload, Image, Camera, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
 import { content } from '@/lib/shared/kliv-content.js';
-import db from '@/lib/shared/kliv-database.js';
-
-interface Tournament {
-  _row_id: number;
-  title: string;
-  game_name: string;
-  status: string;
-}
 
 const GameImageManager = () => {
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const [gameImages, setGameImages] = useState({
@@ -34,38 +24,9 @@ const GameImageManager = () => {
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
-  useEffect(() => {
-    loadTournaments();
-  }, []);
+  
 
-  const loadTournaments = async () => {
-    try {
-      setLoading(true);
-      const { data } = await db.query('tournaments', { 
-        _row_id: 'gte.1',
-        limit: 50,
-        orderBy: 'start_date.desc'
-      });
-      setTournaments(data || []);
-    } catch (error) {
-      console.error('Failed to load tournaments:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load tournaments",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getGameImage = (gameName: string) => {
-    return gameImages[gameName as keyof typeof gameImages] || null;
-  };
-
-  const hasGameImage = (gameName: string) => {
-    return !!getGameImage(gameName);
-  };
+  
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, gameName: string) => {
     const files = event.target.files;
@@ -76,8 +37,8 @@ const GameImageManager = () => {
     
     try {
       // Delete old image if it exists
-      const currentImage = getGameImage(gameName);
-      if (currentImage && currentImage !== gameImages[gameName as keyof typeof gameImages]) {
+      const currentImage = gameImages[gameName];
+      if (currentImage && currentImage !== gameImages[gameName]) {
         try {
           const urlParts = currentImage.split('/');
           const oldFileName = urlParts[urlParts.length - 1];
@@ -125,7 +86,7 @@ const GameImageManager = () => {
   };
 
   const handleDeleteImage = async (gameName: string) => {
-    const currentImage = getGameImage(gameName);
+    const currentImage = gameImages[gameName];
     if (!currentImage) return;
 
     try {
@@ -158,13 +119,7 @@ const GameImageManager = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="text-center py-8">Loading tournaments...</div>
-      </AdminLayout>
-    );
-  }
+  
 
   return (
     <AdminLayout>
@@ -288,68 +243,7 @@ const GameImageManager = () => {
             </CardContent>
           </Card>
 
-          {/* Tournaments */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Gamepad2 className="w-5 h-5 mr-2" />
-                Tournament Image Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {tournaments.map((tournament) => {
-                  const hasImage = hasGameImage(tournament.game_name);
-                  const gameImage = getGameImage(tournament.game_name);
-                  
-                  return (
-                    <div key={tournament._row_id} className="flex items-center justify-between p-4 rounded-lg border border-border">
-                      <div className="flex items-center space-x-4">
-                        {/* Game Image Preview */}
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted">
-                          {gameImage ? (
-                            <img 
-                              src={gameImage} 
-                              alt={tournament.game_name}
-                              className="w-full h-full object-cover"
-                              style={{ width: '64px', height: '64px' }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Image className="w-6 h-6 text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Tournament Info */}
-                        <div>
-                          <h3 className="font-gaming font-semibold">{tournament.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Game: {tournament.game_name} • {tournament.status}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {/* Status */}
-                      <div className="flex items-center space-x-2">
-                        {hasImage ? (
-                          <>
-                            <div className="w-2 h-2 bg-green-500 rounded-full" />
-                            <span className="text-sm text-green-600">Image Available</span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-2 h-2 bg-orange-500 rounded-full" />
-                            <span className="text-sm text-orange-600">No Image</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+  
       </div>
     </AdminLayout>
   );
