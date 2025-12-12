@@ -62,40 +62,26 @@ const TeamPage = () => {
   const loadTeamData = async (id: number) => {
     setIsLoading(true);
     try {
-      // Since we don't have a getTeamById API, we'll simulate by getting user teams
-      // and finding the matching team
-      const userTeams = await teamService.getUserTeams();
-      const foundTeam = userTeams?.find(t => t._row_id === id);
+      console.log('TeamPage.loadTeamData: Loading team', id);
       
-      if (foundTeam) {
-        setTeam(foundTeam);
-        // Mock members data for now
-        const mockMembers: TeamMember[] = [
-          {
-            _row_id: 1,
-            team_id: id,
-            user_id: '1',
-            username: foundTeam.captain_username,
-            role: 'captain',
-            joined_at: foundTeam.created_at,
-            status: 'active'
-          }
-        ];
-        setMembers(mockMembers);
+      const result = await teamService.getTeamById(id);
+      
+      if (result && result.team) {
+        console.log('TeamPage.loadTeamData: Team loaded successfully', result.team.name);
+        setTeam(result.team);
+        setMembers(result.members || []);
       } else {
-        toast({
-          title: "Team Not Found",
-          description: "The requested team could not be found",
-          variant: "destructive"
-        });
+        throw new Error('Team data not found');
       }
     } catch (error) {
-      console.error('Failed to load team data:', error);
+      console.error('TeamPage.loadTeamData: Failed to load team data:', error);
       toast({
         title: "Error",
-        description: "Failed to load team data",
+        description: error instanceof Error ? error.message : "Failed to load team data",
         variant: "destructive"
       });
+      setTeam(null);
+      setMembers([]);
     } finally {
       setIsLoading(false);
     }

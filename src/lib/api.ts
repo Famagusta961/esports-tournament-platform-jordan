@@ -844,6 +844,35 @@ export const teamService = {
     }
   },
 
+  // Get team by ID
+  getTeamById: async (teamId: number) => {
+    try {
+      console.log('teamService.getTeamById: Fetching team', teamId);
+      
+      const response = await functions.post('team-management', { 
+        action: 'get_team_by_id', 
+        team_id: teamId 
+      });
+      
+      console.log('teamService.getTeamById: Response', { 
+        success: response?.success, 
+        hasTeam: !!response?.team,
+        hasMembers: !!response?.members
+      });
+      
+      if (response?.success) {
+        return {
+          team: response.team,
+          members: response.members || []
+        };
+      }
+      throw new Error(response?.error || 'Failed to load team');
+    } catch (error) {
+      handleApiError(error, 'Failed to load team');
+      throw error;
+    }
+  },
+
   // Update team
   updateTeam: async (teamId: number, data: {
     name?: string;
@@ -851,11 +880,21 @@ export const teamService = {
     tag?: string;
   }) => {
     try {
+      console.log('teamService.updateTeam: Updating team', { teamId, data });
+      
       const response = await functions.post('team-management', {
         action: 'update_team',
         team_id: teamId,
-        ...data
+        name: data.name,
+        description: data.description,
+        tag: data.tag
       });
+      
+      console.log('teamService.updateTeam: Response', { 
+        success: response?.success, 
+        message: response?.message 
+      });
+      
       return response;
     } catch (error) {
       handleApiError(error, 'Failed to update team');
