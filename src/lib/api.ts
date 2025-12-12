@@ -849,8 +849,7 @@ export const teamService = {
     try {
       console.log('teamService.getTeamById: Fetching team', teamId);
       
-      const response = await functions.post('team-management', { 
-        action: 'get_team_by_id', 
+      const response = await functions.post('team-view', { 
         team_id: teamId 
       });
       
