@@ -884,19 +884,40 @@ export const profileService = {
         existingProfile: existingProfiles?.[0] 
       });
 
-      const profileData = {
-        ...data,
+      const currentProfile = existingProfiles?.[0];
+      
+      // Prepare update data - exclude username if it hasn't changed to avoid UNIQUE constraint issues
+      const profileData: Record<string, string | number> = {
         _updated_at: Math.floor(Date.now() / 1000) // Current timestamp
       };
 
-      console.log('📝 profileService.updateProfile: Preparing profile data', { profileData });
+      // Only include fields that are being updated
+      if (data.display_name !== undefined) profileData.display_name = data.display_name;
+      if (data.avatar_url !== undefined) profileData.avatar_url = data.avatar_url;
+      if (data.bio !== undefined) profileData.bio = data.bio;
+      if (data.country !== undefined) profileData.country = data.country;
+      
+      // Only include username if it's different from current or if no current profile exists
+      if (data.username !== undefined && (!currentProfile || data.username !== currentProfile.username)) {
+        profileData.username = data.username;
+        console.log('🔄 profileService.updateProfile: Username will be updated', { 
+          oldUsername: currentProfile?.username, 
+          newUsername: data.username 
+        });
+      } else if (data.username !== undefined && currentProfile && data.username === currentProfile.username) {
+        console.log('⏭️ profileService.updateProfile: Username unchanged, excluding from update');
+      }
+
+      console.log('📝 profileService.updateProfile: Final profile data for update', { profileData });
 
       let result;
       if (existingProfiles && existingProfiles.length > 0) {
         console.log('🔄 profileService.updateProfile: Updating existing profile', { 
-          profileId: existingProfiles[0]._row_id 
+          profileId: existingProfiles[0]._row_id,
+          hasUsernameUpdate: profileData.username !== undefined
         });
-        // Update existing profile
+        
+        // Update existing profile - only include fields that actually changed
         result = await db.update('player_profiles', 
           { _row_id: 'eq.' + existingProfiles[0]._row_id }, 
           profileData
@@ -904,12 +925,15 @@ export const profileService = {
         console.log('✅ profileService.updateProfile: Profile updated successfully', { result });
       } else {
         console.log('➕ profileService.updateProfile: Creating new profile');
-        // Create new profile
-        result = await db.insert('player_profiles', {
-          ...profileData,
+        // Create new profile - include all data for new profile
+        const newProfileData = {
+          ...data,
           _created_by: user.id,
-          _created_at: Math.floor(Date.now() / 1000)
-        });
+          _created_at: Math.floor(Date.now() / 1000),
+          _updated_at: Math.floor(Date.now() / 1000)
+        };
+        
+        result = await db.insert('player_profiles', newProfileData);
         console.log('✅ profileService.updateProfile: Profile created successfully', { result });
       }
 
@@ -927,6 +951,15 @@ export const profileService = {
       return result;
     } catch (error) {
       console.error('❌ profileService.updateProfile: Failed to update player profile', error);
+      
+      // Enhanced error logging
+      if (error.message && error.message.includes('UNIQUE constraint failed: player_profiles.username')) {
+        console.error('❌ profileService.updateProfile: UNIQUE constraint error details', {
+          attemptedUsername: data.username,
+          errorMessage: error.message
+        });
+      }
+      
       handleApiError(error, 'Failed to update player profile');
     }
   },
