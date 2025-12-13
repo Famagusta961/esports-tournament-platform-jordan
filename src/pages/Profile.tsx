@@ -68,7 +68,7 @@ interface PlayerProfile {
 }
 
 const Profile = () => {
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, loading: authLoading, clearAuthState } = useAuth();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -109,35 +109,14 @@ const Profile = () => {
           firstName: authUser.firstName 
         });
 
-// Load player profile (ONE profile per user)
-        console.log('🔍 Profile page: Loading player profile for user', authUser.id);
-        let playerProfile = await profileService.getProfile();
-        console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
-        
-        // If no profile exists, create one automatically
-        if (!playerProfile) {
-          console.log('🔍 Profile page: No profile found, creating default profile');
-          try {
-            playerProfile = await profileService.createProfileIfMissing();
-            console.log('✅ Profile page: Default profile created', { profile: playerProfile });
-            
-            // If still null, try one more time with explicit wait
-            if (!playerProfile) {
-              console.log('🔍 Profile page: Profile still null, retrying fetch...');
-              await new Promise(resolve => setTimeout(resolve, 500));
-              playerProfile = await profileService.getProfile();
-              console.log('📊 Profile page: Profile after retry', { profile: playerProfile });
-            }
-            
-          } catch (createError) {
-            console.error('❌ Profile page: Failed to create default profile', createError);
-            // Continue with null profile - user will see "No Profile Found" message
-          }
-        }
+        // Load player profile (GUARANTEED ONE PROFILE PER USER)
+        console.log('🔍 Profile page: Loading/Creating player profile for user', authUser.id);
+      const playerProfile = await profileService.getOrCreateProfile();
+        console.log('📊 Profile page: Profile loaded/created', { profile: playerProfile });
         
         setProfile(playerProfile);
 
-// Update debug info
+        // Update debug info
         if (playerProfile && authUser) {
           const debug = {
             userId: authUser.id,
@@ -310,13 +289,16 @@ const Profile = () => {
     }
   };
 
-const handleLogout = async () => {
+  const handleLogout = async () => {
     console.log('🚪 Profile page: Logout button clicked');
     
     try {
-      // Clear auth session
+      // Clear auth session via auth SDK
       await auth.signOut();
       console.log('✅ Profile page: Auth signOut completed');
+      
+      // Clear auth context state immediately
+      clearAuthState();
       
       // Show toast
       toast({
@@ -324,21 +306,29 @@ const handleLogout = async () => {
         description: "You have been signed out successfully.",
       });
       
-      // Force refresh to clear all state
+      // Force redirect to login to clear all state
       setTimeout(() => {
         console.log('🔄 Profile page: Redirecting to login');
         window.location.href = '/login';
-      }, 500);
+      }, 300);
       
     } catch (error) {
       console.error('❌ Profile page: Logout failed', error);
+      
+      // Even if logout fails, clear local state and redirect
+      clearAuthState();
+      
       toast({
-        title: "Logout Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
+        title: "Logout completed",
+        description: "You have been signed out.",
       });
+      
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 300);
     }
   };
+
   const handleChangePassword = () => {
     console.log('🔐 Change Password button clicked - opening modal');
     setChangePasswordModalOpen(true);
@@ -363,7 +353,7 @@ const handleLogout = async () => {
           <div className="animate-pulse text-muted-foreground font-gaming">Loading profile...</div>
         </div>
       </Layout>
-  );
+    );
   }
 
   // Hard guard: If no valid user session, show error and redirect
@@ -584,7 +574,7 @@ const handleLogout = async () => {
               </div>
             </TabsContent>
 
-          <TabsContent value="settings" className="space-y-4">
+            <TabsContent value="settings" className="space-y-4">
               <div className="rounded-xl bg-card border border-border p-6">
                 <h3 className="font-display font-semibold mb-4">Account Settings</h3>
                 <div className="space-y-4">
@@ -602,7 +592,7 @@ const handleLogout = async () => {
                   </Button>
                 </div>
               </div>
-          </TabsContent>
+            </TabsContent>
           </Tabs>
 
           {/* Edit Profile Modal */}

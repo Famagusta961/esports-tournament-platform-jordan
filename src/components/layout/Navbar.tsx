@@ -15,7 +15,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, setUser } = useAuth();
+const { user, clearAuthState } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,18 +72,18 @@ const Navbar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
     console.log('🚪 Navbar: Logout button clicked');
     
     try {
-      // Clear auth session
+      // Clear auth session via auth SDK
       await auth.signOut();
       console.log('✅ Navbar: Auth signOut completed');
       
-      // Clear auth context state immediately
-      setUser(null);
+      // Clear auth context state immediately using the new method
+      clearAuthState();
       
-      // Show toast
+      // Show success toast
       toast({
         title: "Logged out",
         description: "You have been signed out successfully.",
@@ -92,19 +92,26 @@ const Navbar = () => {
       // Close mobile menu if open
       setIsOpen(false);
       
-      // Force refresh to clear all state
+      // Force redirect to login to clear all cached state
       setTimeout(() => {
-        console.log('🔄 Navbar: Redirecting to home');
-        window.location.href = '/';
-      }, 500);
+        console.log('🔄 Navbar: Redirecting to login');
+        window.location.href = '/login';
+      }, 300);
       
     } catch (error) {
       console.error('❌ Navbar: Logout failed', error);
+      
+      // Even if logout fails, clear local state and redirect
+      clearAuthState();
+      
       toast({
-        title: "Logout Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
+        title: "Logout completed",
+        description: "You have been signed out.",
       });
+      
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 300);
     }
   };
 

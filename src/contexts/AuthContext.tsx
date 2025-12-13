@@ -13,6 +13,7 @@ interface AuthContextType {
   user: UserData | null;
   loading: boolean;
   refreshUser: () => Promise<void>;
+  clearAuthState: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,21 +73,22 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-useEffect(() => {
+  const clearAuthState = () => {
+    console.log('🔐 AuthContext: Clearing auth state');
+    setUser(null);
+    setLoading(false);
+  };
+
+  useEffect(() => {
     console.log('🔐 AuthContext: Initializing...');
     refreshUser();
     
-    // Set up ultra-responsive auth state listener
-    let lastAuthCheck = 0;
+    // Set up auth state listener with immediate response
     let lastKnownUserId = null;
+    let authCheckInterval = null;
     
     const checkAuthState = async () => {
       try {
-        const now = Date.now();
-        // Very frequent checking for immediate updates (50ms)
-        if (now - lastAuthCheck < 50) return;
-        lastAuthCheck = now;
-        
         const currentUser = await auth.getUser();
         const user_id = currentUser?.userUuid || currentUser?.id;
         
@@ -101,7 +103,7 @@ useEffect(() => {
           lastKnownUserId = user_id;
           
           // Force immediate state update
-          if (user_id) {
+          if (user_id && user_id !== 'UNKNOWN') {
             // Normalized user object for consistency
             const normalizedUser = currentUser ? {
               ...currentUser,
@@ -128,17 +130,32 @@ useEffect(() => {
       }
     };
     
-    // Very frequent polling for immediate UI updates
-    const interval = setInterval(checkAuthState, 50);
+    // Check auth state every 200ms for immediate updates, then slow down
+    let checkCount = 0;
+    authCheckInterval = setInterval(() => {
+      checkAuthState();
+      checkCount++;
+      
+      // Slow down after initial checks to reduce load
+      if (checkCount === 20) { // After 4 seconds
+        clearInterval(authCheckInterval);
+        authCheckInterval = setInterval(checkAuthState, 1000); // Check every second
+      }
+    }, 200);
     
     // Cleanup
-    return () => clearInterval(interval);
+    return () => {
+      if (authCheckInterval) {
+        clearInterval(authCheckInterval);
+      }
+    };
   }, []);
 
   const value: AuthContextType = {
     user,
     loading,
     refreshUser,
+    clearAuthState,
   };
 
   return (
