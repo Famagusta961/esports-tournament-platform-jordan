@@ -124,11 +124,18 @@ const Tournaments = () => {
     }
   }, [gameFilter, statusFilter]);
 
-  useEffect(() => {
+useEffect(() => {
     loadGames();
   }, []);
 
-  
+  // Read game filter from URL query parameter on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gameFromUrl = urlParams.get('game');
+    if (gameFromUrl) {
+      setGameFilter(gameFromUrl);
+    }
+  }, []);
 
   useEffect(() => {
     loadTournaments();
