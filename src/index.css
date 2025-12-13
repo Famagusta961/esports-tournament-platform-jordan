@@ -188,29 +188,9 @@
     box-shadow: 0 10px 40px hsl(187 100% 42% / 0.15);
   }
 }
-/* Wallet page specific fixes to prevent overlapping layout */
+/* Wallet page specific fixes - scoped only */
 .wallet-page {
-  isolation: isolate;
   position: relative;
-  z-index: 10;
-  background-color: hsl(var(--background));
   overflow-x: hidden;
-}
-
-.wallet-page .card {
-  background-color: hsl(var(--card));
-  position: relative;
-  z-index: 1;
-}
-
-.wallet-page .bg-gradient-to-br {
-  position: relative;
-  z-index: 1;
-}
-
-/* Remove position overrides - let Tailwind classes work naturally */
-.wallet-page .relative,
-.wallet-page .absolute,
-.wallet-page .fixed {
-  /* Remove position override - use Tailwind classes as intended */
+  isolation: isolate;
 }

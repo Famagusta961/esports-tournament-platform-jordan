@@ -40,6 +40,10 @@ const ScrollToTop = () => {
   useLayoutEffect(() => {
     console.log('Route change detected:', location.pathname + location.search);
     
+    // TEMPORARILY DISABLE ALL scroll-to-top to isolate wallet crash
+    console.log('Scroll-to-top TEMPORARILY DISABLED for wallet crash debugging');
+    return;
+    
     // Skip scroll-to-top on wallet route to prevent stack overflow
     if (location.pathname === '/wallet') {
       console.log('Skipping scroll-to-top for /wallet route to prevent crash');
