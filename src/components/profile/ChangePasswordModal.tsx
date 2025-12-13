@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import auth from '@/lib/shared/kliv-auth.js';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -48,24 +49,42 @@ const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProps) => {
     try {
       console.log('🔐 ChangePasswordModal: Starting password change');
       
-      // TODO: Implement actual password change logic
-      // For now, just simulate success
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call the real Kliv auth API to update password
+      console.log('🔐 ChangePasswordModal: Calling auth.updateUser with new password');
+      const updatedUser = await auth.updateUser({ password: newPassword });
+      
+      console.log('🔐 ChangePasswordModal: Password update successful', { updatedUser });
       
       toast({
         title: "Password Changed Successfully",
-        description: "Your password has been updated. You can now log in with your new password.",
+        description: "Your password has been updated. Please log in again with your new password.",
       });
       
       // Reset form and close modal
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      
+      // Force sign out after password change for security
+      console.log('🔐 ChangePasswordModal: Signing out user after password change');
+      await auth.signOut();
+      
+      // Close modal after successful password change
       onClose();
       
     } catch (error) {
       console.error('🔐 ChangePasswordModal: Failed to change password', error);
-      setError('Failed to change password. Please check your current password and try again.');
+      
+      // Enhanced error handling for specific Kliv auth error codes
+      if (error.message && error.message.includes('bad_credentials')) {
+        setError('Current password is incorrect. Please check your password and try again.');
+      } else if (error.message && error.message.includes('insufficient_password_complexity')) {
+        setError('New password does not meet security requirements. Please choose a stronger password.');
+      } else if (error.message && error.message.includes('password_too_short')) {
+        setError('New password must be at least 8 characters long.');
+      } else {
+        setError('Failed to change password. Please check your current password and try again.');
+      }
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import auth from '@/lib/shared/kliv-auth.js';
 
 interface UserData {
-  id?: string;
+  userUuid?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -43,27 +43,24 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔐 AuthContext: User object keys:', currentUser ? Object.keys(currentUser) : 'null');
       console.log('🔐 AuthContext: User object stringified:', JSON.stringify(currentUser, null, 2));
       
-      // Check all possible ID fields
+      // Kliv auth uses userUuid field - normalize for consistency
       console.log('🔐 AuthContext: ID FIELD CHECK:', {
-        id: currentUser?.id,
-        uuid: currentUser?.uuid,
-        _id: currentUser?._id,
-        userId: currentUser?.userId,
-        user_id: currentUser?.user_id,
-        sub: currentUser?.sub
+        userUuid: currentUser?.userUuid,
+        id: currentUser?.id, // fallback
+        email: currentUser?.email
       });
       
-      // Determine which field to use as the user ID
-      const user_id = currentUser?.id || currentUser?.uuid || currentUser?._id || currentUser?.userId || currentUser?.user_id || currentUser?.sub;
+      // Use userUuid from Kliv auth as primary ID, fallback to legacy id field
+      const user_id = currentUser?.userUuid || currentUser?.id;
       
-      // Normalize user object to ensure we always have an `id` field
+      // Normalize user object to ensure we always have an `id` field for compatibility
       const normalizedUser = currentUser ? {
         ...currentUser,
-        id: user_id || 'UNKNOWN'
+        id: user_id || 'UNKNOWN' // Map userUuid to id for downstream compatibility
       } : null;
       
       console.log('🔐 AuthContext: NORMALIZED USER:', normalizedUser);
-      console.log('🔐 AUTH READY - FINAL user.id:', normalizedUser?.id);
+      console.log('🔐 AUTH READY - FINAL user.id:', normalizedUser?.id, 'original userUuid:', currentUser?.userUuid);
       
       setUser(normalizedUser);
     } catch (error) {

@@ -774,8 +774,10 @@ export const debugProfileService = {
         return null;
       }
 
-      console.log('👤 debugProfileService.debugUserVsProfileMapping: Current user details', {
-        userId: currentUser.id,
+console.log('👤 debugProfileService.debugUserVsProfileMapping: Current user details', {
+        userUuid: currentUser.userUuid,
+        fallbackId: currentUser.id,
+        userId: currentUser.userUuid || currentUser.id,
         userEmail: currentUser.email,
         userName: currentUser.name
       });
@@ -795,7 +797,7 @@ export const debugProfileService = {
         console.error('❌ MANUAL SQL failed', sqlError);
       }
 
-      // Get ALL profiles via SDK
+// Get ALL profiles via SDK
       const { data: allProfiles } = await db.query('player_profiles');
       console.log('📊 debugProfileService.debugUserVsProfileMapping: All profiles in database', {
         totalProfiles: allProfiles?.length || 0,
@@ -804,24 +806,24 @@ export const debugProfileService = {
           _created_by: p._created_by,
           username: p.username,
           display_name: p.display_name,
-          matchesCurrentUser: p._created_by === currentUser.id
+          matchesCurrentUser: p._created_by === (currentUser.userUuid || currentUser.id)
         }))
       });
 
       // Find profiles for current user
-      const userProfiles = allProfiles?.filter(p => p._created_by === currentUser.id) || [];
+      const userProfiles = allProfiles?.filter(p => p._created_by === (currentUser.userUuid || currentUser.id)) || [];
       console.log('📊 debugProfileService.debugUserVsProfileMapping: Profiles for current user', {
-        userId: currentUser.id,
+        userId: currentUser.userUuid || currentUser.id,
         matchingProfiles: userProfiles.length,
         profiles: userProfiles
       });
 
       // Test direct query
       const { data: directQuery } = await db.query('player_profiles', {
-        _created_by: 'eq.' + currentUser.id
+        _created_by: 'eq.' + (currentUser.userUuid || currentUser.id)
       });
       console.log('📊 debugProfileService.debugUserVsProfileMapping: Direct query result', {
-        queryFilter: { _created_by: 'eq.' + currentUser.id },
+        queryFilter: { _created_by: 'eq.' + (currentUser.userUuid || currentUser.id) },
         result: directQuery
       });
 
@@ -834,7 +836,7 @@ export const debugProfileService = {
 
       return {
         currentUser: {
-          id: currentUser.id,
+          id: currentUser.userUuid || currentUser.id,
           email: currentUser.email,
           name: currentUser.name
         },
@@ -850,7 +852,6 @@ export const debugProfileService = {
     }
   }
 };
-
 // Player Profile service using database SDK
 export const profileService = {
   // Get player profile (ONE profile per user)
@@ -866,11 +867,12 @@ export const profileService = {
         console.log('❌ profileService.getProfile: User not authenticated');
         throw new Error('User not authenticated');
       }
-
-      // Check all possible ID fields like in AuthContext
-      const user_id = user.id || user.uuid || user._id || user.userId || user.user_id || user.sub;
+// Kliv auth uses userUuid field - normalize for consistency
+      const user_id = user.userUuid || user.id;
       
       console.log('👤 profileService.getProfile: WHO AM I - User details', { 
+        userUuid: user.userUuid,
+        fallbackId: user.id,
         userId: user_id,
         userEmail: user.email,
         userName: user.name,
@@ -883,12 +885,11 @@ export const profileService = {
         throw new Error('Invalid user session - no valid ID found');
       }
       
-      // TEMPORARY: Debug query to see ALL profiles
-      console.log('🔍 DEBUG: Querying ALL profiles to compare _created_by values');
-      const { data: allProfiles } = await db.query('player_profiles');
+// TEMPORARY: Debug query to see ALL profiles
+      const { data: allProfilesDebug } = await db.query('player_profiles');
       console.log('📊 DEBUG: All profiles in DB', { 
-        totalProfiles: allProfiles?.length || 0,
-        profiles: allProfiles?.map(p => ({
+        totalProfiles: allProfilesDebug?.length || 0,
+        profiles: allProfilesDebug?.map(p => ({
           _row_id: p._row_id,
           _created_by: p._created_by,
           username: p.username,
@@ -976,10 +977,12 @@ export const profileService = {
         throw new Error('User not authenticated');
       }
 
-      // Check all possible ID fields like in AuthContext
-      const user_id = user.id || user.uuid || user._id || user.userId || user.user_id || user.sub;
+// Kliv auth uses userUuid field - normalize for consistency
+      const user_id = user.userUuid || user.id;
       
       console.log('👤 profileService.updateProfile: WHO AM I - User details', { 
+        userUuid: user.userUuid,
+        fallbackId: user.id,
         userId: user_id,
         userEmail: user.email,
         userName: user.name,
@@ -991,7 +994,6 @@ export const profileService = {
         console.error('❌ profileService.updateProfile: No valid user ID found in user object');
         throw new Error('Invalid user session - no valid ID found');
       }
-
       // Validation rules
       if (data.username) {
         console.log('🔍 profileService.updateProfile: Validating username', { username: data.username });
@@ -1187,9 +1189,8 @@ export const profileService = {
         return false;
       }
 
-      // Check all possible ID fields like in AuthContext
-      const user_id = user.id || user.uuid || user._id || user.userId || user.user_id || user.sub;
-      
+// Kliv auth uses userUuid field - normalize for consistency
+      const user_id = user.userUuid || user.id;
       console.log('👤 profileService.checkUsername: User authenticated for username check', { userId: user_id });
 
       const { data: profiles } = await db.query('player_profiles', {

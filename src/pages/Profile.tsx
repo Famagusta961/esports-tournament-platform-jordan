@@ -115,7 +115,7 @@ const Profile = () => {
         console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
         setProfile(playerProfile);
 
-        // Update debug info
+// Update debug info
         if (playerProfile && authUser) {
           const debug = {
             userId: authUser.id,
@@ -125,6 +125,17 @@ const Profile = () => {
             profileAvatarUrl: playerProfile.avatar_url
           };
           console.log('🔍 DEBUG INFO UPDATE:', debug);
+          setDebugInfo(debug);
+        } else {
+          // Set debug info even when no profile found
+          const debug = {
+            userId: authUser?.id,
+            profileRowId: null,
+            profileCreatedBy: null,
+            profileDisplayName: null,
+            profileAvatarUrl: null
+          };
+          console.log('🔍 DEBUG INFO UPDATE (no profile):', debug);
           setDebugInfo(debug);
         }
 
@@ -310,9 +321,24 @@ const Profile = () => {
           <div className="animate-pulse text-muted-foreground font-gaming">Loading profile...</div>
         </div>
       </Layout>
-    );
+  );
   }
 
+  // Hard guard: If no valid user session, show error and redirect
+  if (!authUser || !authUser.id) {
+    console.error('❌ Profile page: CRITICAL - No authenticated user', { authUser });
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Authentication Required</h1>
+            <p className="text-muted-foreground mb-6">Please log in to access your profile.</p>
+            <Button onClick={() => navigate('/login')}>Go to Login</Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
