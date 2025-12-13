@@ -765,8 +765,8 @@ export const debugProfileService = {
 
 // Player Profile service using database SDK
 export const profileService = {
-  // Get player profile
-  getProfile: async (username?: string) => {
+  // Get player profile (ONE profile per user)
+  getProfile: async () => {
     try {
       console.log('🔍 profileService.getProfile: Starting profile fetch');
       const user = await auth.getUser();
@@ -775,81 +775,30 @@ export const profileService = {
         throw new Error('User not authenticated');
       }
 
-      console.log('👤 profileService.getProfile: User authenticated', { userId: user.id, requestedUsername: username });
+      console.log('👤 profileService.getProfile: User authenticated', { userId: user.id });
       
-      let queryFilter = { _created_by: 'eq.' + user.id };
-      
-      // If username is specified, add it to the filter
-      if (username) {
-        queryFilter = { 
-          _created_by: 'eq.' + user.id,
-          username: 'eq.' + username
-        };
-      }
-      
-      const { data: profiles } = await db.query('player_profiles', queryFilter);
+      // Enforce ONE profile per user - get by _created_by only
+      const { data: profiles } = await db.query('player_profiles', {
+        _created_by: 'eq.' + user.id
+      });
 
       console.log('📊 profileService.getProfile: Profile query result', { 
         profileCount: profiles?.length || 0,
-        profiles: profiles?.map(p => ({
-          _row_id: p._row_id,
-          username: p.username,
-          display_name: p.display_name,
-          avatar_url: p.avatar_url,
-          bio: p.bio,
-          country: p.country,
-          _updated_at: p._updated_at
-        }))
+        profile: profiles?.[0] 
       });
 
-      // If profiles found
+      // Return the first (and only) profile
       if (profiles && profiles.length > 0) {
-        // If username was specified and we found exact match, return it
-        if (username && profiles.length === 1) {
-          const selectedProfile = profiles[0];
-          console.log('📋 profileService.getProfile: Found exact username match', {
-            selectedProfile: {
-              _row_id: selectedProfile._row_id,
-              username: selectedProfile.username,
-              display_name: selectedProfile.display_name,
-              avatar_url: selectedProfile.avatar_url,
-              _updated_at: selectedProfile._updated_at
-            }
-          });
-          return selectedProfile;
-        }
-        
-        // Otherwise, sort by _updated_at descending (most recent first)
-        const sortedProfiles = profiles.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
-        
-        // Try to prioritize profiles with more complete data (non-empty display_name, etc.)
-        let selectedProfile = sortedProfiles[0];
-        
-        // Check if there's a profile with a more complete profile
-        const profilesWithData = sortedProfiles.filter(p => 
-          p.display_name && p.display_name.trim() !== ''
-        );
-        
-        if (profilesWithData.length > 0) {
-          selectedProfile = profilesWithData[0];
-        }
-        
-        console.log('📋 profileService.getProfile: Selected profile (fallback logic)', {
-          totalProfiles: profiles.length,
-          selectedProfile: {
-            _row_id: selectedProfile._row_id,
-            username: selectedProfile.username,
-            display_name: selectedProfile.display_name,
-            avatar_url: selectedProfile.avatar_url,
-            _updated_at: selectedProfile._updated_at
-          },
-          selectionCriteria: profilesWithData.length > 0 ? 'most recent with data' : 'most recent'
+        console.log('📋 profileService.getProfile: Returning user profile', {
+          _row_id: profiles[0]._row_id,
+          username: profiles[0].username,
+          display_name: profiles[0].display_name,
+          avatar_url: profiles[0].avatar_url
         });
-        
-        return selectedProfile;
+        return profiles[0];
       }
 
-      console.log('⚠️ profileService.getProfile: No profiles found for user');
+      console.log('⚠️ profileService.getProfile: No profile found for user');
       return null;
     } catch (error) {
       console.error('❌ profileService.getProfile: Failed to fetch player profile', error);
@@ -857,28 +806,7 @@ export const profileService = {
     }
   },
 
-  // Get the active username for the current user (most recently used)
-  getActiveUsername: async () => {
-    try {
-      const user = await auth.getUser();
-      if (!user) return null;
-
-      const { data: profiles } = await db.query('player_profiles', {
-        _created_by: 'eq.' + user.id
-      });
-
-      if (profiles && profiles.length > 0) {
-        // Return the username of the most recently updated profile
-        const sortedProfiles = profiles.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
-        return sortedProfiles[0].username || null;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('❌ profileService.getActiveUsername: Failed', error);
-      return null;
-    }
-  },
+  // Removed getActiveUsername - not needed with ONE profile per user
 
   // Create or update player profile
   updateProfile: async (data: {
@@ -932,13 +860,13 @@ export const profileService = {
           }))
         });
 
-        // Check if any existing username belongs to someone else
+        // Check if username belongs to someone else (exclude current user)
         if (existingProfiles && existingProfiles.length > 0) {
-          console.log('🔍 profileService.updateProfile: Found profiles with username, checking ownership');
           const otherUserProfiles = existingProfiles.filter(profile => profile._created_by !== user.id);
           
           if (otherUserProfiles.length > 0) {
             console.log('❌ profileService.updateProfile: Username already taken by another user', { 
+              username: data.username,
               otherProfiles: otherUserProfiles.map(p => ({ 
                 _row_id: p._row_id, 
                 username: p.username, 
@@ -947,7 +875,7 @@ export const profileService = {
             });
             throw new Error('Username already taken, please choose another one.');
           } else {
-            console.log('✅ profileService.updateProfile: Username belongs to current user (or is being reclaimed)');
+            console.log('✅ profileService.updateProfile: Username belongs to current user');
           }
         } else {
           console.log('✅ profileService.updateProfile: Username is available');
@@ -1001,22 +929,17 @@ export const profileService = {
 
       let result;
       if (existingProfiles && existingProfiles.length > 0) {
-        // If multiple profiles exist, update the most recently updated one
-        const sortedProfiles = existingProfiles.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
-        const targetProfile = sortedProfiles[0];
+        // ENFORCE ONE PROFILE PER USER: Update the first (and only) profile
+        const targetProfile = existingProfiles[0];
         
-        console.log('🔄 profileService.updateProfile: Updating existing profile', { 
-          totalProfiles: existingProfiles.length,
-          selectedProfile: {
-            _row_id: targetProfile._row_id,
-            username: targetProfile.username,
-            display_name: targetProfile.display_name,
-            _updated_at: targetProfile._updated_at
-          },
-          hasUsernameUpdate: profileData.username !== undefined
+        console.log('🔄 profileService.updateProfile: Updating existing profile (ONE PER USER)', { 
+          profileId: targetProfile._row_id,
+          username: targetProfile.username,
+          display_name: targetProfile.display_name,
+          updatedFields: Object.keys(profileData)
         });
         
-        // Update the most recently updated profile
+        // Update the single profile for this user
         const updateResult = await db.update('player_profiles', 
           { _row_id: 'eq.' + targetProfile._row_id }, 
           profileData
@@ -1024,7 +947,7 @@ export const profileService = {
         
         console.log('🔍 profileService.updateProfile: Update operation result', { 
           updateResult,
-          profileId: existingProfiles[0]._row_id,
+          profileId: targetProfile._row_id,
           updatedFields: Object.keys(profileData)
         });
         
@@ -1055,25 +978,23 @@ export const profileService = {
         _created_by: 'eq.' + user.id
       });
 
-      if (verificationProfile && verificationProfile.length > 0) {
-        const sortedVerification = verificationProfile.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
-        const latestProfile = sortedVerification[0];
+      if (verificationProfile && verificationProfile.length === 1) {
+        const profile = verificationProfile[0];
         
-        console.log('✅ profileService.updateProfile: Verification complete', { 
-          profileCount: verificationProfile.length,
-          latestProfile: {
-            _row_id: latestProfile._row_id,
-            username: latestProfile.username,
-            display_name: latestProfile.display_name,
-            avatar_url: latestProfile.avatar_url,
-            bio: latestProfile.bio,
-            country: latestProfile.country,
-            _updated_at: latestProfile._updated_at
-          },
+        console.log('✅ profileService.updateProfile: Verification complete (ONE PROFILE)', { 
+          _row_id: profile._row_id,
+          username: profile.username,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+          bio: profile.bio,
+          country: profile.country,
+          _updated_at: profile._updated_at,
           updatedFields: Object.keys(profileData)
         });
       } else {
-        console.log('⚠️ profileService.updateProfile: No profiles found after verification');
+        console.log('⚠️ profileService.updateProfile: Profile verification issue', { 
+          profileCount: verificationProfile?.length || 0 
+        });
       }
 
       return result;

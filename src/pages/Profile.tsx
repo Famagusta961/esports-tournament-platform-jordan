@@ -93,14 +93,9 @@ const Profile = () => {
         console.log('👤 Profile page: User authenticated', { userId: currentUser.id });
         setUser(currentUser);
 
-        // Get active username first
-        console.log('🔍 Profile page: Getting active username');
-        const activeUsername = await profileService.getActiveUsername();
-        console.log('👤 Profile page: Active username', { activeUsername });
-
-        // Load player profile with active username
+        // Load player profile (ONE profile per user)
         console.log('🔍 Profile page: Loading player profile');
-        const playerProfile = await profileService.getProfile(activeUsername || undefined);
+        const playerProfile = await profileService.getProfile();
         console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
         setProfile(playerProfile);
 
@@ -125,12 +120,9 @@ const Profile = () => {
       // Small delay to ensure database is updated
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Get active username and reload profile data after update
-      const activeUsername = await profileService.getActiveUsername();
-      console.log('👤 Profile page: Active username for refresh', { activeUsername });
-      
+      // Reload profile data after update (ONE profile per user)
       console.log('🔍 Profile page: Reloading profile data');
-      const playerProfile = await profileService.getProfile(activeUsername || undefined);
+      const playerProfile = await profileService.getProfile();
       console.log('📊 Profile page: Updated profile loaded', { 
         profile: playerProfile,
         display_name: playerProfile?.display_name,
@@ -180,17 +172,11 @@ const Profile = () => {
         const userProfile = await debugProfileService.queryProfileByUserId(currentUser.id);
         console.log('👤 DEBUG: Current user profile', { userProfile });
         
-        // Also test active username logic
-        const activeUsername = await profileService.getActiveUsername();
-        console.log('👤 DEBUG: Active username', { activeUsername });
-        
-        if (activeUsername) {
-          const specificProfile = await profileService.getProfile(activeUsername);
-          console.log('👤 DEBUG: Specific profile by username', { 
-            username: activeUsername,
-            profile: specificProfile 
-          });
-        }
+        // Test ONE profile per user logic
+        const singleProfile = await profileService.getProfile();
+        console.log('👤 DEBUG: Single profile for user', { 
+          profile: singleProfile 
+        });
       }
     } catch (error) {
       console.error('❌ DEBUG: Database test failed', error);
