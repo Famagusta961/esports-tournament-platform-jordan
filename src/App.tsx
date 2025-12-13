@@ -40,6 +40,12 @@ const ScrollToTop = () => {
   useLayoutEffect(() => {
     console.log('Route change detected:', location.pathname + location.search);
     
+    // Skip scroll-to-top on wallet route to prevent stack overflow
+    if (location.pathname === '/wallet') {
+      console.log('Skipping scroll-to-top for /wallet route to prevent crash');
+      return;
+    }
+    
     // First, disable browser's automatic scroll restoration
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';

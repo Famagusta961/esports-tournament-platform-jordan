@@ -39,10 +39,12 @@ const Wallet = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('Wallet component effect triggered');
     const loadWalletData = async () => {
       try {
         const currentUser = await auth.getUser();
         if (!currentUser) {
+          console.log('No user found, navigating to login');
           navigate('/login');
           return;
         }
@@ -54,14 +56,17 @@ const Wallet = () => {
           return;
         }
         
+        console.log('User found, loading wallet data');
         setUser(currentUser);
 
         // Load wallet balance
         const walletBalance = await walletService.getBalance();
+        console.log('Balance loaded:', walletBalance);
         setBalance(walletBalance?.balance || 0);
 
         // Load transactions
         const transactionHistory = await walletService.getTransactions();
+        console.log('Transactions loaded:', transactionHistory?.length);
         setTransactions(transactionHistory || []);
       } catch (error) {
         console.error('Failed to load wallet data:', error);
@@ -71,9 +76,11 @@ const Wallet = () => {
           variant: "destructive"
         });
       } finally {
+        console.log('Wallet loading completed');
         setLoading(false);
       }
     };
+    
     loadWalletData();
   }, [navigate, toast]);
 

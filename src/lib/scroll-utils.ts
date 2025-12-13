@@ -25,16 +25,33 @@ const getScroller = () => {
 };
 
 export const scrollToTop = () => {
+  console.log('scrollToTop called');
+  
   const scroller = getScroller();
   
   if (scroller && 'scrollTo' in scroller) {
+    const currentScroll = scroller.scrollTop;
+    console.log('Current container scroll:', currentScroll);
+    
+    if (currentScroll === 0) {
+      console.log('Already at top, skipping to prevent infinite loop');
+      return;
+    }
+    
     scroller.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     console.log('Scrolled container to top');
   }
   
-  // Fallback to window scroll
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-  console.log('Scrolled window to top');
+  const currentWindowScroll = window.scrollY;
+  console.log('Current window scroll:', currentWindowScroll);
+  
+  if (currentWindowScroll === 0) {
+    console.log('Window already at top, skipping to prevent infinite loop');
+  } else {
+    // Fallback to window scroll
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    console.log('Scrolled window to top');
+  }
 };

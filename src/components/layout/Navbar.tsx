@@ -64,6 +64,13 @@ const Navbar = () => {
     if (location.pathname === targetPath) {
       e.preventDefault();
       console.log('Same route clicked, scrolling to top');
+      
+      // Skip scroll-to-top on wallet route to prevent stack overflow
+      if (targetPath === '/wallet') {
+        console.log('Skipping scroll-to-top for /wallet route to prevent crash');
+        return;
+      }
+      
       requestAnimationFrame(scrollToTop);
     }
   };
