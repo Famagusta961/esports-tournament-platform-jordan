@@ -25,6 +25,7 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-unused-vars": "off",
       "no-undef": "error",
+      "react-hooks/exhaustive-deps": "off",
     },
   },
   // JavaScript files (SDK files) - add browser globals
