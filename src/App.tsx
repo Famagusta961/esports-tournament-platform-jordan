@@ -3,7 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
+import { scrollToTop } from "./lib/scroll-utils";
 import Index from "./pages/Index";
 import Tournaments from "./pages/Tournaments";
 import TournamentDetails from "./pages/TournamentDetails";
@@ -31,44 +32,20 @@ import GameImageManager from "./pages/admin/GameImageManager";
 
 const queryClient = new QueryClient();
 
-// Scroll to top on route change
+// Scroll to top on route change using useLayoutEffect for before-paint execution
 const ScrollToTop = () => {
   const location = useLocation();
 
-  useEffect(() => {
-    console.log('Scrolling to top for route:', location.pathname + location.search);
+  useLayoutEffect(() => {
+    console.log('Route change detected:', location.pathname + location.search);
     
     // First, disable browser's automatic scroll restoration
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
     
-    // Match the same logic as the navbar for consistency
-    const scrollToTop = () => {
-      // Find the actual scroll container in order of likelihood
-      const scrollContainer = 
-        document.querySelector('main') ||           // Layout's main (most likely)
-        document.querySelector('#root') ||           // React root
-        document.documentElement ||                 // HTML element
-        document.body;                             // Body element
-
-      // Reset scroll position on the identified container
-      if (scrollContainer && 'scrollTo' in scrollContainer) {
-        scrollContainer.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      }
-      
-      // Also reset window scroll as fallback
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
-    
-    // Execute immediately and then in the next animation frame
+    // Scroll to top immediately
     scrollToTop();
-    requestAnimationFrame(scrollToTop);
-    
-    // Additional fallback after a short delay
-    setTimeout(scrollToTop, 50);
     
   }, [location.pathname, location.search]);
 

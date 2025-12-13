@@ -4,6 +4,7 @@ import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield, Home, Up
 import { Button } from '@/components/ui/button';
 import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
+import { scrollToTop } from '@/lib/scroll-utils';
 import React from 'react';
 
 interface UserData {
@@ -58,28 +59,10 @@ const Navbar = () => {
     { name: 'Leaderboard', href: '/leaderboard', icon: Users },
   ];
 
-  const scrollToTop = () => {
-    // Find the actual scroll container in order of likelihood
-    const scrollContainer = 
-      document.querySelector('main') ||           // Layout's main (most likely)
-      document.querySelector('#root') ||           // React root
-      document.documentElement ||                 // HTML element
-      document.body;                             // Body element
-
-    // Reset scroll position on the identified container
-    if (scrollContainer && 'scrollTo' in scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    }
-    
-    // Also reset window scroll as fallback
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  };
-
-  const handleNavClick = (targetPath: string) => (e: React.MouseEvent) => {
+  const onNavClick = (targetPath: string) => (e: React.MouseEvent) => {
     if (location.pathname === targetPath) {
       e.preventDefault();
+      console.log('Same route clicked, scrolling to top');
       requestAnimationFrame(scrollToTop);
     }
   };
@@ -95,7 +78,7 @@ const Navbar = () => {
           {/* Logo - Shows on all devices */}
           <Link 
             to="/" 
-            onClick={handleNavClick('/')}
+            onClick={onNavClick('/')}
             className="flex items-center group"
           >
             <div className="relative">
@@ -114,7 +97,7 @@ const Navbar = () => {
               <Link
                 key={link.name}
                 to={link.href}
-                onClick={handleNavClick(link.href)}
+                onClick={onNavClick(link.href)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-gaming font-semibold text-lg transition-all duration-200 ${
                   isActive(link.href)
                     ? 'text-primary bg-primary/10'
@@ -196,7 +179,7 @@ const Navbar = () => {
                 key={link.name}
                 to={link.href}
                 onClick={(e) => {
-                  handleNavClick(link.href)(e);
+                  onNavClick(link.href)(e);
                   setIsOpen(false);
                 }}
                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-gaming font-semibold text-lg transition-all ${

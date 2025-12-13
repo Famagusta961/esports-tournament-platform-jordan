@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useRef } from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import { scrollToTop } from '@/lib/scroll-utils';
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,21 +13,8 @@ const Layout = ({ children, showFooter = true }: LayoutProps) => {
 
   useEffect(() => {
     // Ensure we're at top when Layout first mounts (for Home page and initial load)
-    const scrollToTop = () => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      
-      // Also scroll the main element if it's the scroll container
-      if (mainRef.current) {
-        mainRef.current.scrollTop = 0;
-      }
-    };
-
+    console.log('Layout mounted - scrolling to top');
     scrollToTop();
-    
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(scrollToTop);
   }, []);
 
   return (
@@ -35,7 +23,7 @@ const Layout = ({ children, showFooter = true }: LayoutProps) => {
       <main 
         ref={mainRef}
         className="flex-1 pt-16 lg:pt-20"
-        data-scroll-container
+        data-scroll-container="true"
       >
         {children}
       </main>
