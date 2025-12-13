@@ -1118,7 +1118,7 @@ export const profileService = {
           updatedProfile: verificationResult[0]
         });
         
-      } else {
+    } else {
         console.log('➕ profileService.updateProfile: INSERT mode - creating new profile');
         const newProfileData = {
           ...data,
@@ -1132,7 +1132,6 @@ export const profileService = {
         const insertResult = await db.insert('player_profiles', newProfileData);
         console.log('✅ profileService.updateProfile: INSERT successful', { insertResult });
       }
-
       // Verify the UPSERT by querying the profile again
       console.log('🔍 profileService.updateProfile: Verifying UPSERT result');
       const { data: verificationProfile } = await db.query('player_profiles', {
@@ -1228,11 +1227,71 @@ export const profileService = {
         isAvailable: true 
       });
 
-      return true;
+return true;
     } catch (error) {
       console.error('❌ profileService.checkUsername: Failed to check username availability', error);
       handleApiError(error, 'Failed to check username availability');
       return false;
+    }
+  },
+
+  // Create profile if none exists for user
+  createProfileIfMissing: async () => {
+    try {
+      console.log('🔧 profileService.createProfileIfMissing: Creating profile for user');
+      const user = await auth.getUser();
+      
+      if (!user) {
+        console.log('❌ profileService.createProfileIfMissing: User not authenticated');
+        throw new Error('User not authenticated');
+      }
+
+      // Kliv auth uses userUuid field - normalize for consistency
+      const user_id = user.userUuid || user.id;
+      
+      if (!user_id || user_id === 'UNKNOWN') {
+        console.error('❌ profileService.createProfileIfMissing: No valid user ID found');
+        throw new Error('Invalid user session - no valid ID found');
+      }
+
+      // Check if profile already exists
+      const { data: existingProfiles } = await db.query('player_profiles', {
+        _created_by: 'eq.' + user_id
+      });
+
+      if (existingProfiles && existingProfiles.length > 0) {
+        console.log('✅ profileService.createProfileIfMissing: Profile already exists', { 
+          profile: existingProfiles[0] 
+        });
+        return existingProfiles[0];
+      }
+
+      // Create new profile with default values
+      const defaultProfileData = {
+        display_name: user.firstName || user.name || user.email?.split('@')[0] || 'Player',
+        username: user.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '') || 'player_' + Date.now(),
+        avatar_url: '',
+        bio: '',
+        country: '',
+        _created_by: user_id,
+        _created_at: Math.floor(Date.now() / 1000),
+        _updated_at: Math.floor(Date.now() / 1000)
+      };
+
+      console.log('📝 profileService.createProfileIfMissing: Creating default profile', { defaultProfileData });
+      
+      const insertResult = await db.insert('player_profiles', defaultProfileData);
+      console.log('✅ profileService.createProfileIfMissing: Profile created successfully', { insertResult });
+
+      // Return the created profile
+      const { data: verificationProfile } = await db.query('player_profiles', {
+        _created_by: 'eq.' + user_id
+      });
+
+      return verificationProfile?.[0] || null;
+    } catch (error) {
+      console.error('❌ profileService.createProfileIfMissing: Failed to create profile', error);
+      handleApiError(error, 'Failed to create player profile');
     }
   }
 };
@@ -1293,121 +1352,7 @@ export const teamService = {
     } catch (error) {
       handleApiError(error, 'Failed to invite team member');
     }
-  },
-
-  // Accept invitation
-  acceptInvite: async (inviteCode: string) => {
-    try {
-      const response = await functions.post('team-management', {
-        action: 'accept_invite',
-        invite_code: inviteCode
-      });
-      return response;
-    } catch (error) {
-      handleApiError(error, 'Failed to accept team invitation');
-    }
-  },
-
-  // Remove member
-  removeMember: async (teamId: number, memberUsername: string) => {
-    try {
-      const response = await functions.post('team-management', {
-        action: 'remove_member',
-        team_id: teamId,
-        member_username: memberUsername
-      });
-      return response;
-    } catch (error) {
-      handleApiError(error, 'Failed to remove team member');
-    }
-  },
-
-  // Leave team
-  leaveTeam: async (teamId: number) => {
-    try {
-      const response = await functions.post('team-management', {
-        action: 'leave_team',
-        team_id: teamId
-      });
-      return response;
-    } catch (error) {
-      handleApiError(error, 'Failed to leave team');
-    }
-  },
-
-  // Delete team - captain only
-  deleteTeam: async (teamId: number) => {
-    try {
-      const response = await functions.post('team-management', {
-        action: 'delete_team',
-        team_id: teamId
-      });
-      return response;
-    } catch (error) {
-      handleApiError(error, 'Failed to delete team');
-    }
-  },
-
-  // Get team by ID
-  getTeamById: async (teamId: number) => {
-    try {
-      console.log('teamService.getTeamById: Fetching team', teamId);
-      console.log('teamService.getTeamById: About to call functions.post to /api/v2/function/team-management');
-      
-      const response = await functions.post('team-management', { 
-        action: 'get_team_by_id',
-        team_id: teamId 
-      });
-      
-      console.log('teamService.getTeamById: Full response:', response);
-      console.log('teamService.getTeamById: Response analysis', { 
-        success: response?.success, 
-        hasTeam: !!response?.team,
-        hasMembers: !!response?.members,
-        game_name: response?.team?.game_name,
-        captain_username: response?.team?.captain_username
-      });
-      
-      if (response?.success) {
-        return {
-          team: response.team,
-          members: response.team?.members || []  // Working version: members inside team object
-        };
-      }
-      throw new Error(response?.error || 'Failed to load team');
-    } catch (error) {
-      handleApiError(error, 'Failed to load team');
-      throw error;
-    }
-  },
-
-  // Update team
-  updateTeam: async (teamId: number, data: {
-    name?: string;
-    description?: string;
-    tag?: string;
-  }) => {
-    try {
-      console.log('teamService.updateTeam: Updating team', { teamId, data });
-      
-      const response = await functions.post('team-management', {
-        action: 'update_team',
-        team_id: teamId,
-        name: data.name,
-        description: data.description,
-        tag: data.tag
-      });
-      
-      console.log('teamService.updateTeam: Response', { 
-        success: response?.success, 
-        message: response?.message 
-      });
-      
-      return response;
-    } catch (error) {
-      handleApiError(error, 'Failed to update team');
-    }
-  }
+}
 };
 
 // User management service for admins
@@ -1462,40 +1407,9 @@ export const userManagementService = {
       return response;
     } catch (error) {
       handleApiError(error, 'Failed to remove admin role');
+      }
     }
-  },
-
-  // Update user profile
-  updateUserProfile: async (userUuid: string, data: {
-    username?: string;
-    phone?: string;
-    avatar_url?: string;
-  }) => {
-    try {
-      const response = await functions.post('user-management', {
-        action: 'update_profile',
-        user_uuid: userUuid,
-        profile_data: data
-      });
-      return response;
-    } catch (error) {
-      handleApiError(error, 'Failed to update user profile');
-    }
-  },
-
-  // Delete user (soft delete)
-  deleteUser: async (userUuid: string) => {
-    try {
-      const response = await functions.post('user-management', {
-        action: 'delete',
-        user_uuid: userUuid
-      });
-      return response;
-    } catch (error) {
-      handleApiError(error, 'Failed to delete user');
-    }
-  }
-};
+  };
 
 // Settings service for admins
 export const settingsService = {

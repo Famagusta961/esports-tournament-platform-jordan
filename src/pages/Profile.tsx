@@ -109,10 +109,23 @@ const Profile = () => {
           firstName: authUser.firstName 
         });
 
-        // Load player profile (ONE profile per user)
+// Load player profile (ONE profile per user)
         console.log('🔍 Profile page: Loading player profile for user', authUser.id);
-        const playerProfile = await profileService.getProfile();
+        let playerProfile = await profileService.getProfile();
         console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
+        
+        // If no profile exists, create one automatically
+        if (!playerProfile) {
+          console.log('🔍 Profile page: No profile found, creating default profile');
+          try {
+            playerProfile = await profileService.createProfileIfMissing();
+            console.log('✅ Profile page: Default profile created', { profile: playerProfile });
+          } catch (createError) {
+            console.error('❌ Profile page: Failed to create default profile', createError);
+            // Continue with null profile - user will see "No Profile Found" message
+          }
+        }
+        
         setProfile(playerProfile);
 
 // Update debug info

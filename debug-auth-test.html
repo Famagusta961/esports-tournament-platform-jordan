@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug Test</title>
+    <script type="module">
+        import auth from './src/lib/shared/kliv-auth.js';
+        
+        async function testAuth() {
+            try {
+                console.log('🔐 Testing auth.getUser()...');
+                const user = await auth.getUser();
+                console.log('👤 AUTH RESULT:', user);
+                console.log('🔍 userUuid:', user?.userUuid);
+                console.log('🔍 id:', user?.id);
+                console.log('🔍 email:', user?.email);
+                
+                // Check existing profiles
+                console.log('📊 Checking existing profiles...');
+                const db = await import('./src/lib/shared/kliv-database.js');
+                const { data: profiles } = await db.default.query('player_profiles');
+                console.log('📋 All profiles:', profiles);
+                
+            } catch (error) {
+                console.error('❌ Auth test failed:', error);
+            }
+        }
+        
+        // Run test
+        testAuth();
+    </script>
+</head>
+<body>
+    <h1>Auth Debug Test</h1>
+    <p>Check browser console for results</p>
+</body>
+</html>

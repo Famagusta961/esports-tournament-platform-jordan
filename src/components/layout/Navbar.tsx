@@ -82,11 +82,12 @@ const Navbar = () => {
             className="flex items-center group"
           >
             <div className="relative">
-              <img 
-                src="/arenajo-logo-rectangle.png" 
-                alt="ArenaJo" 
-                className="h-12 w-[180px] max-w-[180px] object-contain lg:h-10 lg:w-[120px] lg:max-w-[120px]"
-              />
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                  <span className="font-bold text-white text-lg sm:text-xl">A</span>
+                </div>
+                <span className="font-display font-bold text-xl sm:text-2xl text-foreground">ArenaJo</span>
+              </div>
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
             </div>
           </Link>
