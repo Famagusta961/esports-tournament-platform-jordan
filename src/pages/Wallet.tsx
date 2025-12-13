@@ -46,14 +46,20 @@ const Wallet = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('Wallet: Starting auth check...');
         const currentUser = await auth.getUser();
-        console.log('Wallet: Auth check - currentUser:', currentUser);
+        console.log('Wallet: Auth check - currentUser:', currentUser, 'has UUID:', !!currentUser?.uuid);
         if (!currentUser) {
           console.log('Wallet: No user found, redirecting to login');
           navigate('/login');
           return;
         }
-        console.log('Wallet: User authenticated, setting user state');
+        if (!currentUser.uuid) {
+          console.log('Wallet: User found but no UUID - this is the problem!');
+          setLoading(false); // Stop loading if no UUID
+          return;
+        }
+        console.log('Wallet: User authenticated with UUID, setting user state');
         setUser(currentUser);
       } catch (error) {
         console.error('Wallet: Auth check failed', error);
@@ -68,14 +74,16 @@ const Wallet = () => {
   useEffect(() => {
     console.log('Wallet: Data effect triggered - user:', user, 'didLoadRef.current:', didLoadRef.current);
     
-    // Skip if no user UUID or already loaded
+    // Skip if no user UUID
     if (!user?.uuid) {
-      console.log('Wallet: Skipping data load - no user UUID');
+      console.log('Wallet: Skipping data load - no user UUID, setting loading to false');
+      setLoading(false);
       return;
     }
     
+    // Skip if already loaded - but ensure loading is cleared
     if (didLoadRef.current) {
-      console.log('Wallet: Skipping data load - already executed');
+      console.log('Wallet: Skipping data load - already executed, clearing loading');
       setLoading(false);
       return;
     }
@@ -87,27 +95,42 @@ const Wallet = () => {
       didLoadRef.current = true;
       console.log('Wallet: didLoadRef set to true');
       
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout after 10 seconds')), 10000);
+      });
+
       try {
-        // Load wallet balance
+        // Load wallet balance with timeout
         console.log('Wallet: Fetching balance for UUID:', user.uuid);
-        const walletBalance = await walletService.getBalance();
+        const walletBalance = await Promise.race([
+          walletService.getBalance(),
+          timeoutPromise
+        ]) as { balance: number; currency: string; username: string };
         console.log('Wallet: Balance loaded:', walletBalance);
         setBalance(walletBalance?.balance || 0);
 
-        // Load transactions
+        // Load transactions with timeout
         console.log('Wallet: Fetching transactions for UUID:', user.uuid);
-        const transactionHistory = await walletService.getTransactions();
+        const transactionHistory = await Promise.race([
+          walletService.getTransactions(),
+          timeoutPromise
+        ]) as Transaction[];
         console.log('Wallet: Transactions loaded:', transactionHistory?.length, 'sample:', transactionHistory?.slice(0, 2));
         setTransactions(transactionHistory || []);
         
         console.log('Wallet: All data loaded successfully');
       } catch (error) {
         console.error('Wallet: Failed to load wallet data:', error);
+        // Set empty data on error so UI shows
+        setBalance(0);
+        setTransactions([]);
+        
         // Throttle toast - only show critical errors
-        if (error && !error.message?.includes('undefined')) {
+        if (error && !error.message?.includes('undefined') && !error.message?.includes('Timeout')) {
           toast({
             title: "Error",
-            description: "Failed to load wallet information",
+            description: "Failed to load wallet information. Using empty data.",
             variant: "destructive"
           });
         }
