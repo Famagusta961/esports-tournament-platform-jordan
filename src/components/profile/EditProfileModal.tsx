@@ -181,6 +181,7 @@ export default function EditProfileModal({ isOpen, onClose, currentProfile, onPr
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔧 EditProfileModal: Submit started', { formData });
     
     // Validate all fields
     const errors: Record<string, string> = {};
@@ -201,28 +202,53 @@ export default function EditProfileModal({ isOpen, onClose, currentProfile, onPr
     }
 
     if (Object.keys(errors).length > 0) {
+      console.log('🛑 EditProfileModal: Validation failed', { errors });
       setValidationErrors(errors);
       return;
     }
 
     if (usernameStatus !== 'available' && formData.username !== currentProfile?.username) {
+      console.log('🛑 EditProfileModal: Username validation pending', { 
+        usernameStatus, 
+        currentUsername: currentProfile?.username,
+        newUsername: formData.username 
+      });
       setValidationErrors(prev => ({ ...prev, username: 'Please wait for username validation or choose a different username' }));
       return;
     }
 
+    console.log('✅ EditProfileModal: All validation passed, calling profileService.updateProfile');
     setLoading(true);
     try {
-      await profileService.updateProfile(formData);
+      const updateData = {
+        display_name: formData.display_name,
+        username: formData.username,
+        bio: formData.bio,
+        country: formData.country,
+        avatar_url: formData.avatar_url
+      };
+      console.log('📤 EditProfileModal: Sending update data', updateData);
+      
+      await profileService.updateProfile(updateData);
+      
+      console.log('✅ EditProfileModal: profileService.updateProfile succeeded');
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully",
       });
+      
+      console.log('🔄 EditProfileModal: Calling onProfileUpdate callback');
       onProfileUpdate?.();
+      
+      console.log('🚪 EditProfileModal: Closing modal');
       onClose();
     } catch (error) {
+      console.error('❌ EditProfileModal: Update failed', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to update profile. Please try again.";
+      console.log('💬 EditProfileModal: Showing error toast', { errorMessage });
       toast({
         title: "Update failed",
-        description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

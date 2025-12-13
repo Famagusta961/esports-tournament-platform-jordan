@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
 import auth from '@/lib/shared/kliv-auth.js';
-import { profileService } from '@/lib/api';
+import { profileService, debugProfileService } from '@/lib/api';
 import EditProfileModal from '@/components/profile/EditProfileModal';
 
 interface UserData {
@@ -62,9 +62,7 @@ const COUNTRIES = [
   { code: 'FR', name: 'France' },
 ];
 
-const Profile = () => {
-  const [user, setUser] = useState<UserData | null>(null);
-  interface PlayerProfile {
+interface PlayerProfile {
   _row_id?: number;
   display_name?: string;
   username?: string;
@@ -74,7 +72,9 @@ const Profile = () => {
   current_rank?: string;
 }
 
-const [profile, setProfile] = useState<PlayerProfile | null>(null);
+const Profile = () => {
+  const [user, setUser] = useState<UserData | null>(null);
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -83,20 +83,26 @@ const [profile, setProfile] = useState<PlayerProfile | null>(null);
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🔄 Profile page: Starting data load');
         const currentUser = await auth.getUser();
         if (!currentUser) {
+          console.log('❌ Profile page: User not authenticated, redirecting to login');
           navigate('/login');
           return;
         }
+        console.log('👤 Profile page: User authenticated', { userId: currentUser.id });
         setUser(currentUser);
 
         // Load player profile
+        console.log('🔍 Profile page: Loading player profile');
         const playerProfile = await profileService.getProfile();
+        console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
         setProfile(playerProfile);
 
+        console.log('✅ Profile page: Data load complete');
         setLoading(false);
       } catch (error) {
-        console.error('Failed to load profile data:', error);
+        console.error('❌ Profile page: Failed to load profile data:', error);
         setLoading(false);
       }
     };
@@ -104,20 +110,49 @@ const [profile, setProfile] = useState<PlayerProfile | null>(null);
   }, [navigate]);
 
   const handleEditProfile = () => {
+    console.log('✏️ Profile page: Opening edit profile modal');
     setEditModalOpen(true);
   };
 
-  const handleProfileUpdate = () => {
-    // Reload profile data after update
-    const loadProfile = async () => {
-      try {
-        const playerProfile = await profileService.getProfile();
-        setProfile(playerProfile);
-      } catch (error) {
-        console.error('Failed to reload profile:', error);
+  const handleProfileUpdate = async () => {
+    console.log('🔄 Profile page: Handling profile update callback');
+    try {
+      // Reload profile data after update
+      console.log('🔍 Profile page: Reloading profile data');
+      const playerProfile = await profileService.getProfile();
+      console.log('📊 Profile page: Updated profile loaded', { profile: playerProfile });
+      setProfile(playerProfile);
+      
+      console.log('✅ Profile page: Profile state updated successfully');
+    } catch (error) {
+      console.error('❌ Profile page: Failed to reload profile after update:', error);
+      toast({
+        title: "Refresh failed",
+        description: "Your profile was saved but the page failed to refresh. Please reload the page.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Debug function to test database directly
+  const handleDebugDatabase = async () => {
+    try {
+      console.log('🔍 DEBUG: Testing database connection and profile data');
+      const allProfiles = await debugProfileService.queryAllProfiles();
+      
+      const currentUser = await auth.getUser();
+      if (currentUser) {
+        const userProfile = await debugProfileService.queryProfileByUserId(currentUser.id);
+        console.log('👤 DEBUG: Current user profile', { userProfile });
       }
-    };
-    loadProfile();
+    } catch (error) {
+      console.error('❌ DEBUG: Database test failed', error);
+      toast({
+        title: "Debug error",
+        description: "Check console for details",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLogout = async () => {
@@ -222,6 +257,9 @@ const [profile, setProfile] = useState<PlayerProfile | null>(null);
                   <Button variant="outline" className="font-gaming" onClick={handleEditProfile}>
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Profile
+                  </Button>
+                  <Button variant="ghost" className="font-gaming" onClick={handleDebugDatabase}>
+                    Debug DB
                   </Button>
                   <Button variant="ghost" onClick={handleLogout} className="font-gaming text-destructive hover:text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
