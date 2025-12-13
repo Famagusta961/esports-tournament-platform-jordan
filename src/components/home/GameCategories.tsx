@@ -56,6 +56,24 @@ const games = [
     players: '1.2K',
     image: '/content/games/league-of-legends-pc-game-cover.jpg',
   },
+  {
+    id: 'rocket-league',
+    name: 'Rocket League',
+    shortName: 'RL',
+    color: 'from-sky-500 to-blue-600',
+    activeTournaments: 2,
+    players: '800',
+    image: '/content/games/EGS_RocketLeague_PsyonixLLC_S1_2560x1440-4c231557ef0a0626fbb97e0bd137d837.jpg',
+  },
+  {
+    id: 'tekken-8',
+    name: 'Tekken 8',
+    shortName: 'TK8',
+    color: 'from-red-600 to-rose-600',
+    activeTournaments: 3,
+    players: '950',
+    image: '/content/games/tekken-7-pc-game-steam-cover.jpg',
+  },
 ];
 
 const GameCategories = () => {
@@ -86,7 +104,7 @@ const GameCategories = () => {
           {games.map((game, index) => (
             <Link
               key={game.id}
-              to={`/games/${game.id}`}
+              to={`/tournaments?game=${game.id}`}
               className="group relative overflow-hidden rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover-lift animate-slide-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
