@@ -80,6 +80,15 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Debug state to show required values
+  const [debugInfo, setDebugInfo] = useState<{
+    userId?: string;
+    profileRowId?: number;
+    profileCreatedBy?: string;
+    profileDisplayName?: string;
+    profileAvatarUrl?: string;
+  }>({});
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -99,6 +108,19 @@ const Profile = () => {
         console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
         setProfile(playerProfile);
 
+        // Update debug info
+        if (playerProfile && currentUser) {
+          const debug = {
+            userId: currentUser.id,
+            profileRowId: playerProfile._row_id,
+            profileCreatedBy: playerProfile._created_by,
+            profileDisplayName: playerProfile.display_name,
+            profileAvatarUrl: playerProfile.avatar_url
+          };
+          console.log('🔍 DEBUG INFO UPDATE:', debug);
+          setDebugInfo(debug);
+        }
+
         console.log('✅ Profile page: Data load complete');
         setLoading(false);
       } catch (error) {
@@ -117,9 +139,6 @@ const Profile = () => {
   const handleProfileUpdate = async () => {
     console.log('🔄 Profile page: Handling profile update callback');
     try {
-      // Give database time to process the update
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Reload profile data after update (ONE profile per user)
       console.log('🔍 Profile page: Reloading profile data after save');
       const playerProfile = await profileService.getProfile();
@@ -132,22 +151,28 @@ const Profile = () => {
       });
       
       if (playerProfile) {
+        // Update debug info first
+        const currentUser = await auth.getUser();
+        if (currentUser) {
+          const debug = {
+            userId: currentUser.id,
+            profileRowId: playerProfile._row_id,
+            profileCreatedBy: playerProfile._created_by,
+            profileDisplayName: playerProfile.display_name,
+            profileAvatarUrl: playerProfile.avatar_url
+          };
+          console.log('🔍 UPDATED DEBUG INFO:', debug);
+          setDebugInfo(debug);
+        }
+        
         // Update state and verify the change
         console.log('📋 Profile page: Setting profile state with updated data');
         setProfile(playerProfile);
         
-        // Additional verification after state update
-        setTimeout(() => {
-          console.log('✅ Profile page: Profile state verification', {
-            displayName: playerProfile?.display_name,
-            username: playerProfile?.username,
-            hasAvatar: !!playerProfile?.avatar_url,
-            avatarUrl: playerProfile?.avatar_url,
-            country: playerProfile?.country
-          });
-        }, 200);
-        
         console.log('✅ Profile page: Profile state updated successfully');
+        
+        // Close modal only after state update
+        setEditModalOpen(false);
         
         // Show success confirmation
         toast({
@@ -157,8 +182,8 @@ const Profile = () => {
       } else {
         console.log('⚠️ Profile page: No profile returned after update');
         toast({
-          title: "Update completed",
-          description: "Profile saved, but refresh failed. Please reload the page.",
+          title: "Update failed",
+          description: "Profile save failed. Please try again.",
           variant: "destructive",
         });
       }
@@ -166,8 +191,8 @@ const Profile = () => {
     } catch (error) {
       console.error('❌ Profile page: Failed to reload profile after update:', error);
       toast({
-        title: "Refresh failed",
-        description: "Your profile was saved but the page failed to refresh. Please reload the page.",
+        title: "Update failed",
+        description: "Failed to save profile changes. Please try again.",
         variant: "destructive",
       });
     }
@@ -177,6 +202,22 @@ const Profile = () => {
   const handleDebugDatabase = async () => {
     try {
       console.log('🔍 DEBUG: Testing database connection and profile data');
+      
+      // Test current avatar accessibility
+      if (profile?.avatar_url) {
+        console.log('🔍 DEBUG: Testing avatar URL accessibility', { avatarUrl: profile.avatar_url });
+        try {
+          const response = await fetch(profile.avatar_url, { method: 'HEAD' });
+          console.log('📊 DEBUG: Avatar accessibility result', {
+            url: profile.avatar_url,
+            status: response.status,
+            accessible: response.ok,
+            contentType: response.headers.get('content-type')
+          });
+        } catch (fetchError) {
+          console.log('❌ DEBUG: Avatar not accessible', { url: profile.avatar_url, error: fetchError.message });
+        }
+      }
       
       // Comprehensive user vs profile mapping debug
       const debugResult = await debugProfileService.debugUserVsProfileMapping();
@@ -210,6 +251,15 @@ const Profile = () => {
       description: "You have been signed out successfully.",
     });
     navigate('/');
+  };
+
+  const handleChangePassword = () => {
+    console.log('🔐 Change Password button clicked');
+    toast({
+      title: "Password Change",
+      description: "Password reset functionality would be implemented here. For now, check console logs.",
+    });
+    // TODO: Implement password change modal or redirect
   };
 
   if (loading) {
@@ -247,7 +297,7 @@ const Profile = () => {
                     />
                   ) : (
                     <span className="font-display font-bold text-4xl sm:text-5xl text-white">
-                      {profile?.display_name?.[0] || user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'P'}
+                      {profile?.display_name?.[0] || user?.email?.[0]?.toUpperCase() || 'P'}
                     </span>
                   )}
                 </div>
@@ -264,8 +314,18 @@ const Profile = () => {
               {/* Info */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
+                  {/* Required debug output - MANDATORY */}
+                  <div className="text-xs text-red-500 font-mono bg-red-50 border border-red-200 p-2 rounded mb-2">
+                    DEBUG OUTPUT (REQUIRED):<br/>
+                    auth.user.id: {debugInfo.userId?.slice(0,8) || 'null'}...<br/>
+                    profile._row_id: {debugInfo.profileRowId || 'null'}<br/>
+                    profile._created_by: {debugInfo.profileCreatedBy?.slice(0,8) || 'null'}...<br/>
+                    profile.display_name: {debugInfo.profileDisplayName || 'null'}<br/>
+                    profile.avatar_url: {debugInfo.profileAvatarUrl || 'null'}<br/>
+                    UI Source: {profile?.display_name ? '✅ player_profiles.display_name' : '❌ FALLBACK (NOT ALLOWED)'}
+                  </div>
                   <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1">
-                    {profile?.display_name || user?.firstName || 'Player'} {user?.lastName || ''}
+                    {profile?.display_name || 'No Profile Found'} 
                   </h1>
                   {profile?.username && (
                     <p className="text-muted-foreground font-gaming flex items-center space-x-2">
@@ -423,7 +483,7 @@ const Profile = () => {
                     <User className="w-4 h-4 mr-2" />
                     Update Profile Information
                   </Button>
-                  <Button variant="outline" className="w-full justify-start font-gaming">
+                  <Button variant="outline" className="w-full justify-start font-gaming" onClick={handleChangePassword}>
                     <Shield className="w-4 h-4 mr-2" />
                     Change Password
                   </Button>

@@ -780,7 +780,22 @@ export const debugProfileService = {
         userName: currentUser.name
       });
 
-      // Get ALL profiles
+      // MANUAL SQL to see ALL profiles
+      try {
+        const manualQuery = await db.execute(`
+          SELECT _row_id, _created_by, username, display_name, avatar_url 
+          FROM player_profiles 
+          LIMIT 20
+        `);
+        console.log('🔍 MANUAL SQL: All profiles in DB', { 
+          rows: manualQuery?.rows || [],
+          count: manualQuery?.rows?.length || 0
+        });
+      } catch (sqlError) {
+        console.error('❌ MANUAL SQL failed', sqlError);
+      }
+
+      // Get ALL profiles via SDK
       const { data: allProfiles } = await db.query('player_profiles');
       console.log('📊 debugProfileService.debugUserVsProfileMapping: All profiles in database', {
         totalProfiles: allProfiles?.length || 0,
@@ -810,6 +825,13 @@ export const debugProfileService = {
         result: directQuery
       });
 
+      // Test if getProfile works
+      const getProfileResult = await profileService.getProfile();
+      console.log('📊 debugProfileService.debugUserVsProfileMapping: getProfile result', {
+        getProfileResult,
+        works: !!getProfileResult
+      });
+
       return {
         currentUser: {
           id: currentUser.id,
@@ -819,7 +841,8 @@ export const debugProfileService = {
         allProfilesCount: allProfiles?.length || 0,
         userProfilesCount: userProfiles.length,
         directQueryCount: directQuery?.length || 0,
-        hasProfile: userProfiles.length > 0
+        hasProfile: userProfiles.length > 0,
+        getProfileWorks: !!getProfileResult
       };
     } catch (error) {
       console.error('❌ debugProfileService.debugUserVsProfileMapping: Debug failed', error);
@@ -975,12 +998,12 @@ export const profileService = {
       });
 
       const currentProfile = existingProfiles?.[0];
+      let targetRowId: number | undefined;
       
-      let result;
       if (currentProfile) {
-        // UPDATE existing profile (guaranteed to be only one)
-        console.log('🔄 profileService.updateProfile: UPSERT - UPDATE existing profile', { 
-          profileId: currentProfile._row_id,
+        targetRowId = currentProfile._row_id;
+        console.log('🔄 profileService.updateProfile: UPDATE mode - targeting existing row', { 
+          targetRowId,
           username: currentProfile.username
         });
         
@@ -990,27 +1013,66 @@ export const profileService = {
         };
 
         // Only include fields that are being updated
-        if (data.display_name !== undefined) updateData.display_name = data.display_name;
-        if (data.username !== undefined) updateData.username = data.username;
-        if (data.avatar_url !== undefined) updateData.avatar_url = data.avatar_url;
-        if (data.bio !== undefined) updateData.bio = data.bio;
-        if (data.country !== undefined) updateData.country = data.country;
+        if (data.display_name !== undefined) {
+          updateData.display_name = data.display_name;
+          console.log('📝 Updating display_name:', data.display_name);
+        }
+        if (data.username !== undefined) {
+          updateData.username = data.username;
+          console.log('📝 Updating username:', data.username);
+        }
+        if (data.avatar_url !== undefined) {
+          updateData.avatar_url = data.avatar_url;
+          console.log('📝 Updating avatar_url:', data.avatar_url);
+        }
+        if (data.bio !== undefined) {
+          updateData.bio = data.bio;
+          console.log('📝 Updating bio:', data.bio);
+        }
+        if (data.country !== undefined) {
+          updateData.country = data.country;
+          console.log('📝 Updating country:', data.country);
+        }
 
-        console.log('📝 profileService.updateProfile: Update data', { updateData });
+        console.log('📝 profileService.updateProfile: Final update data for row ' + targetRowId, { updateData });
         
-        result = await db.update('player_profiles', 
-          { _row_id: 'eq.' + currentProfile._row_id }, 
+        const updateResult = await db.update('player_profiles', 
+          { _row_id: 'eq.' + targetRowId }, 
           updateData
         );
         
-        console.log('✅ profileService.updateProfile: Profile updated successfully', { 
-          profileId: currentProfile._row_id,
-          updateResult: result 
+        console.log('🔍 profileService.updateProfile: Update operation result', { 
+          targetRowId,
+          updateResult,
+          affectedRows: updateResult?.length || 0
+        });
+        
+        // Verify the update worked
+        if (!updateResult || updateResult.length === 0) {
+          throw new Error('Update failed: No rows were affected');
+        }
+        
+        // Re-select the same row to verify
+        console.log('🔍 profileService.updateProfile: Re-selecting row ' + targetRowId + ' for verification');
+        const { data: verificationResult } = await db.query('player_profiles', {
+          _row_id: 'eq.' + targetRowId
+        });
+        
+        console.log('📊 profileService.updateProfile: Verification result', { 
+          targetRowId,
+          verificationResult: verificationResult?.[0]
+        });
+        
+        if (!verificationResult || verificationResult.length === 0) {
+          throw new Error('Update verification failed: Row not found after update');
+        }
+        
+        console.log('✅ profileService.updateProfile: UPDATE successful and verified', { 
+          updatedProfile: verificationResult[0]
         });
         
       } else {
-        // INSERT new profile (user doesn't have one yet)
-        console.log('➕ profileService.updateProfile: UPSERT - INSERT new profile');
+        console.log('➕ profileService.updateProfile: INSERT mode - creating new profile');
         const newProfileData = {
           ...data,
           _created_by: user.id,
@@ -1020,8 +1082,8 @@ export const profileService = {
         
         console.log('📝 profileService.updateProfile: New profile data', { newProfileData });
         
-        result = await db.insert('player_profiles', newProfileData);
-        console.log('✅ profileService.updateProfile: Profile created successfully', { result });
+        const insertResult = await db.insert('player_profiles', newProfileData);
+        console.log('✅ profileService.updateProfile: INSERT successful', { insertResult });
       }
 
       // Verify the UPSERT by querying the profile again
@@ -1047,7 +1109,7 @@ export const profileService = {
         });
       }
 
-      return result;
+      return verificationProfile?.[0] || null;
     } catch (error) {
       console.error('❌ profileService.updateProfile: UPSERT failed', error);
       
