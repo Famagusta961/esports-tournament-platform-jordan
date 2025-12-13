@@ -188,3 +188,33 @@
     box-shadow: 0 10px 40px hsl(187 100% 42% / 0.15);
   }
 }
+/* Wallet page specific fixes to prevent overlapping layout */
+.wallet-page {
+  isolation: isolate;
+  position: relative;
+  z-index: 10;
+  background-color: hsl(var(--background));
+  overflow-x: hidden;
+}
+
+.wallet-page .card {
+  background-color: hsl(var(--card));
+  position: relative;
+  z-index: 1;
+}
+
+.wallet-page .bg-gradient-to-br {
+  position: relative;
+  z-index: 1;
+}
+
+/* Prevent any fixed/absolute positioning issues */
+.wallet-page * {
+  position: static;
+}
+
+.wallet-page .relative,
+.wallet-page .absolute,
+.wallet-page .fixed {
+  position: relative !important;
+}

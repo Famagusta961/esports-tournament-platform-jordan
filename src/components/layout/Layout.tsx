@@ -18,11 +18,11 @@ const Layout = ({ children, showFooter = true }: LayoutProps) => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background bg-grid-pattern">
+    <div className="min-h-screen flex flex-col bg-background bg-grid-pattern relative" style={{ isolation: 'isolate' }}>
       <Navbar />
       <main 
         ref={mainRef}
-        className="flex-1 pt-16 lg:pt-20"
+        className="flex-1 pt-16 lg:pt-20 relative z-10 bg-background overflow-x-hidden"
         data-scroll-container="true"
       >
         {children}

@@ -111,7 +111,7 @@ const Wallet = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center justify-center relative z-10">
           <div className="animate-pulse text-muted-foreground font-gaming">Loading wallet...</div>
         </div>
       </Layout>
@@ -120,10 +120,10 @@ const Wallet = () => {
 
   return (
     <Layout>
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
+      <div className="py-8 px-4 sm:px-6 lg:px-8 relative bg-background overflow-x-hidden" style={{ isolation: 'isolate' }}>
+        <div className="max-w-6xl mx-auto relative z-10">
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-8 relative z-10">
             <h1 className="font-display text-3xl font-bold mb-2">My Wallet</h1>
             <p className="text-muted-foreground font-gaming">
               Manage your funds and track tournament earnings
@@ -131,8 +131,8 @@ const Wallet = () => {
           </div>
 
           {/* Balance Card */}
-          <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border-border mb-8 overflow-hidden">
-            <div className="p-6 sm:p-8">
+          <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border-border mb-8 overflow-hidden relative z-10">
+            <div className="p-6 sm:p-8 relative bg-transparent">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-xl font-semibold">Current Balance</h2>
                 <Button
@@ -168,8 +168,8 @@ const Wallet = () => {
           </Card>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card className="bg-card border-border p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10">
+            <Card className="bg-card border-border p-4 relative bg-transparent">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
                   <TrendingUp className="w-5 h-5 text-green-500" />
@@ -181,7 +181,7 @@ const Wallet = () => {
               </div>
             </Card>
 
-            <Card className="bg-card border-border p-4">
+            <Card className="bg-card border-border p-4 relative bg-transparent">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
                   <CreditCard className="w-5 h-5 text-blue-500" />
@@ -193,7 +193,7 @@ const Wallet = () => {
               </div>
             </Card>
 
-            <Card className="bg-card border-border p-4">
+            <Card className="bg-card border-border p-4 relative bg-transparent">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
                   <Wallet className="w-5 h-5 text-orange-500" />
@@ -207,12 +207,12 @@ const Wallet = () => {
           </div>
 
           {/* Transactions */}
-          <Card className="bg-card border-border overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-border">
+          <Card className="bg-card border-border overflow-hidden relative z-10">
+            <div className="p-4 sm:p-6 border-b border-border relative bg-transparent">
               <h3 className="font-display text-lg sm:text-xl font-semibold">Transaction History</h3>
             </div>
             
-            <Tabs defaultValue="all" className="p-4 sm:p-6">
+            <Tabs defaultValue="all" className="p-4 sm:p-6 relative bg-transparent">
               <TabsList className="bg-muted p-1 mb-6 w-full overflow-x-auto flex flex-nowrap">
                 <TabsTrigger value="all" className="font-gaming flex-shrink-0">All</TabsTrigger>
                 <TabsTrigger value="deposits" className="font-gaming flex-shrink-0">Deposits</TabsTrigger>
