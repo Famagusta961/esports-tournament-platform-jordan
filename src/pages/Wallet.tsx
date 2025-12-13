@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import auth from '@/lib/shared/kliv-auth.js';
+import { walletService } from '@/lib/api';
 
 interface WalletBalance {
   current_balance: number;
@@ -12,12 +12,15 @@ interface WalletBalance {
 }
 
 interface WalletTransaction {
-  id: string;
+  _row_id: number;
   type: string;
   amount: number;
-  description: string;
+  description?: string;
   status: string;
-  created_at: string;
+  _created_at: number;
+  payment_method?: string;
+  reference_type?: string;
+  reference_id?: number;
 }
 
 export default function Wallet() {
@@ -49,41 +52,21 @@ export default function Wallet() {
       try {
         console.log(" WALLET: Starting balance fetch");
         
-        const user = await auth.getUser();
-        console.log(" WALLET: Auth user:", user?.uuid ? 'found' : 'missing');
-        
-        if (!user?.uuid) {
-          console.log(" WALLET: No UUID - aborting balance fetch");
-          return;
-        }
-
         if (didLoadRef.current) {
           console.log(" WALLET: Already loading balance - skipping");
           return;
         }
         didLoadRef.current = true;
 
-        const response = await fetch('/api/wallet/balance', {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        console.log(" WALLET: Balance response status:", response.status);
-
-        if (!response.ok) {
-          throw new Error(`Balance fetch failed: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await walletService.getBalance();
         console.log(" WALLET: Balance data:", data);
 
         if (!aborted && data) {
           setBalance({
-            current_balance: data.current_balance || 0,
-            total_won: data.total_won || 0,
-            pending_withdrawals: data.pending_withdrawals || 0,
-            total_withdrawn: data.total_withdrawn || 0
+            current_balance: data.balance || 0,
+            total_won: 0, // Not available in current service
+            pending_withdrawals: data.pending_withdrawal || 0, // From user_wallets table
+            total_withdrawn: 0 // Not available in current service
           });
         }
       } catch (err) {
@@ -149,33 +132,13 @@ export default function Wallet() {
       try {
         console.log(" WALLET: Starting transactions fetch");
         
-        const user = await auth.getUser();
-        console.log(" WALLET: Auth user for transactions:", user?.uuid ? 'found' : 'missing');
-        
-        if (!user?.uuid) {
-          console.log(" WALLET: No UUID - aborting transactions fetch");
-          return;
-        }
-
         if (didLoadRef.current) {
           console.log(" WALLET: Already loading transactions - skipping");
           return;
         }
         didLoadRef.current = true;
 
-        const response = await fetch('/api/wallet/transactions', {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        console.log(" WALLET: Transactions response status:", response.status);
-
-        if (!response.ok) {
-          throw new Error(`Transactions fetch failed: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await walletService.getTransactions();
         console.log(" WALLET: Transactions data:", data);
 
         if (!aborted && Array.isArray(data)) {
@@ -234,70 +197,6 @@ export default function Wallet() {
       console.log(" WALLET: Transactions effect cleanup");
     };
   }, []); // Separate empty dependency array - effect runs once independently
-
-  // Helper function to render individual transaction
-  const renderTransaction = (transaction: WalletTransaction) => {
-    const getIcon = () => {
-      switch (transaction.type) {
-        case 'tournament':
-          return (
-            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
-            </svg>
-          );
-        case 'deposit':
-          return (
-            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          );
-        case 'withdrawal':
-          return (
-            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-            </svg>
-          );
-        default:
-          return null;
-      }
-    };
-
-    const getIconBg = () => {
-      switch (transaction.type) {
-        case 'tournament': return 'bg-purple-100';
-        case 'deposit': return 'bg-green-100';
-        case 'withdrawal': return 'bg-red-100';
-        default: return 'bg-gray-100';
-      }
-    };
-
-    const getAmountColor = () => {
-      return transaction.amount > 0 ? 'text-green-600' : 'text-red-600';
-    };
-
-    const getAmountPrefix = () => {
-      return transaction.amount > 0 ? '+' : '-';
-    };
-
-    return (
-      <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-        <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getIconBg()}`}>
-            {getIcon()}
-          </div>
-          <div>
-            <div className="font-medium text-gray-900">{transaction.description}</div>
-            <div className="text-sm text-gray-500">
-              {new Date(transaction.created_at).toLocaleDateString()} • {transaction.status}
-            </div>
-          </div>
-        </div>
-        <div className={`font-semibold ${getAmountColor()}`}>
-          {getAmountPrefix()()}${Math.abs(transaction.amount).toFixed(2)}
-        </div>
-      </div>
-    );
-  };
   
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-6 lg:p-8">
@@ -396,7 +295,44 @@ export default function Wallet() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {transactions.map((transaction) => renderTransaction(transaction))}
+                  {transactions.map((transaction) => (
+                    <div key={transaction._row_id} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          transaction.type === 'tournament' ? 'bg-purple-100' :
+                          transaction.type === 'deposit' ? 'bg-green-100' :
+                          transaction.type === 'withdrawal' ? 'bg-red-100' : 'bg-gray-100'
+                        }`}>
+                          {transaction.type === 'tournament' && (
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                            </svg>
+                          )}
+                          {transaction.type === 'deposit' && (
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          )}
+                          {transaction.type === 'withdrawal' && (
+                            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{transaction.description || 'Transaction'}</div>
+                          <div className="text-sm text-gray-500">
+                            {new Date(transaction._created_at * 1000).toLocaleDateString()} • {transaction.status}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`font-semibold ${
+                        transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>
@@ -429,7 +365,26 @@ export default function Wallet() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {transactions.filter(tx => tx.type === 'deposit').map((transaction) => renderTransaction(transaction))}
+                  {transactions.filter(tx => tx.type === 'deposit').map((transaction) => (
+                    <div key={transaction._row_id} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{transaction.description || 'Deposit'}</div>
+                          <div className="text-sm text-gray-500">
+                            {new Date(transaction._created_at * 1000).toLocaleDateString()} • {transaction.status}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-semibold text-green-600">
+                        +${transaction.amount.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>
@@ -462,7 +417,26 @@ export default function Wallet() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {transactions.filter(tx => tx.type === 'withdrawal').map((transaction) => renderTransaction(transaction))}
+                  {transactions.filter(tx => tx.type === 'withdrawal').map((transaction) => (
+                    <div key={transaction._row_id} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{transaction.description || 'Withdrawal'}</div>
+                          <div className="text-sm text-gray-500">
+                            {new Date(transaction._created_at * 1000).toLocaleDateString()} • {transaction.status}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-semibold text-red-600">
+                        -${transaction.amount.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>
@@ -495,7 +469,26 @@ export default function Wallet() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {transactions.filter(tx => tx.type === 'tournament').map((transaction) => renderTransaction(transaction))}
+                  {transactions.filter(tx => tx.type === 'tournament').map((transaction) => (
+                    <div key={transaction._row_id} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{transaction.description || 'Tournament Prize'}</div>
+                          <div className="text-sm text-gray-500">
+                            {new Date(transaction._created_at * 1000).toLocaleDateString()} • {transaction.status}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-semibold text-green-600">
+                        +${transaction.amount.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>
