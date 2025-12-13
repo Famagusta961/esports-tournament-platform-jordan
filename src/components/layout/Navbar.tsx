@@ -139,10 +139,13 @@ const Navbar = () => {
                     Wallet
                   </Button>
                 </Link>
-                <Link to="/profile" onClick={() => console.log('Profile desktop clicked')}>
+                <Link to="/profile" onClick={(e) => {
+                      console.log('🖱️ Profile desktop clicked - navigating to /profile');
+                      onNavClick('/profile')(e);
+                    }}>
                   <Button variant="outline" className="font-gaming border-primary/50 hover:border-primary hover:bg-primary/10">
                     <User className="w-4 h-4 mr-2" />
-                    {user.firstName || 'Profile'}
+                    {user.firstName || user.email?.substring(0, user.email.indexOf('@')) || 'Profile'}
                   </Button>
                 </Link>
               </>
@@ -219,10 +222,14 @@ const Navbar = () => {
                       Wallet
                     </Button>
                   </Link>
-                  <Link to="/profile" onClick={() => { console.log('Profile mobile clicked'); setIsOpen(false); }}>
+                  <Link to="/profile" onClick={(e) => {
+                      console.log('🖱️ Profile mobile clicked - navigating to /profile');
+                      onNavClick('/profile')(e);
+                      setIsOpen(false);
+                    }}>
                     <Button variant="outline" className="w-full justify-start font-gaming">
                       <User className="w-5 h-5 mr-3" />
-                      Profile
+                      {user.firstName || user.email?.substring(0, user.email.indexOf('@')) || 'Profile'}
                     </Button>
                   </Link>
                 </>

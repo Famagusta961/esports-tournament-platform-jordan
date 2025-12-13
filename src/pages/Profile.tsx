@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import auth from '@/lib/shared/kliv-auth.js';
 import { profileService, debugProfileService } from '@/lib/api';
 import EditProfileModal from '@/components/profile/EditProfileModal';
+import ChangePasswordModal from '@/components/profile/ChangePasswordModal';
 
 const mockStats = {
   totalMatches: 156,
@@ -71,6 +72,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -285,12 +287,8 @@ const Profile = () => {
   };
 
   const handleChangePassword = () => {
-    console.log('🔐 Change Password button clicked');
-    toast({
-      title: "Password Change",
-      description: "Password reset functionality would be implemented here. For now, check console logs.",
-    });
-    // TODO: Implement password change modal or redirect
+    console.log('🔐 Change Password button clicked - opening modal');
+    setChangePasswordModalOpen(true);
   };
 
   // Show loading state while auth is initializing
@@ -545,6 +543,12 @@ const Profile = () => {
             onClose={() => setEditModalOpen(false)}
             currentProfile={profile}
             onProfileUpdate={handleProfileUpdate}
+          />
+
+          {/* Change Password Modal */}
+          <ChangePasswordModal
+            isOpen={changePasswordModalOpen}
+            onClose={() => setChangePasswordModalOpen(false)}
           />
         </div>
       </div>

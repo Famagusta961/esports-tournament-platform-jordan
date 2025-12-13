@@ -37,14 +37,38 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🔐 AuthContext: Refreshing user...');
       const currentUser = await auth.getUser();
-      console.log('🔐 AuthContext: User refreshed', { 
-        userId: currentUser?.id, 
-        email: currentUser?.email,
-        firstName: currentUser?.firstName
+      
+      // CRITICAL: Log complete user object to see what we actually get
+      console.log('🔐 AuthContext: RAW USER OBJECT FROM auth.getUser():', currentUser);
+      console.log('🔐 AuthContext: User object keys:', currentUser ? Object.keys(currentUser) : 'null');
+      console.log('🔐 AuthContext: User object stringified:', JSON.stringify(currentUser, null, 2));
+      
+      // Check all possible ID fields
+      console.log('🔐 AuthContext: ID FIELD CHECK:', {
+        id: currentUser?.id,
+        uuid: currentUser?.uuid,
+        _id: currentUser?._id,
+        userId: currentUser?.userId,
+        user_id: currentUser?.user_id,
+        sub: currentUser?.sub
       });
-      setUser(currentUser);
+      
+      // Determine which field to use as the user ID
+      const user_id = currentUser?.id || currentUser?.uuid || currentUser?._id || currentUser?.userId || currentUser?.user_id || currentUser?.sub;
+      
+      // Normalize user object to ensure we always have an `id` field
+      const normalizedUser = currentUser ? {
+        ...currentUser,
+        id: user_id || 'UNKNOWN'
+      } : null;
+      
+      console.log('🔐 AuthContext: NORMALIZED USER:', normalizedUser);
+      console.log('🔐 AUTH READY - FINAL user.id:', normalizedUser?.id);
+      
+      setUser(normalizedUser);
     } catch (error) {
       console.error('🔐 AuthContext: Failed to refresh user:', error);
+      console.error('🔐 AuthContext: Error details:', JSON.stringify(error, null, 2));
       setUser(null);
     } finally {
       setLoading(false);

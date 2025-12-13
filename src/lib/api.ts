@@ -858,16 +858,30 @@ export const profileService = {
     try {
       console.log('🔍 profileService.getProfile: Starting profile fetch');
       const user = await auth.getUser();
+      
+      console.log('🔍 profileService.getProfile: RAW USER FROM auth.getUser():', user);
+      console.log('🔍 profileService.getProfile: User object keys:', user ? Object.keys(user) : 'null');
+      
       if (!user) {
         console.log('❌ profileService.getProfile: User not authenticated');
         throw new Error('User not authenticated');
       }
 
+      // Check all possible ID fields like in AuthContext
+      const user_id = user.id || user.uuid || user._id || user.userId || user.user_id || user.sub;
+      
       console.log('👤 profileService.getProfile: WHO AM I - User details', { 
-        userId: user.id,
+        userId: user_id,
         userEmail: user.email,
-        userName: user.name
+        userName: user.name,
+        firstName: user.firstName,
+        allFields: Object.keys(user)
       });
+      
+      if (!user_id || user_id === 'UNKNOWN') {
+        console.error('❌ profileService.getProfile: No valid user ID found in user object');
+        throw new Error('Invalid user session - no valid ID found');
+      }
       
       // TEMPORARY: Debug query to see ALL profiles
       console.log('🔍 DEBUG: Querying ALL profiles to compare _created_by values');
@@ -884,13 +898,18 @@ export const profileService = {
       });
       
       // Enforce ONE profile per user - get by _created_by only
-      const queryFilter = { _created_by: 'eq.' + user.id };
-      console.log('🔍 profileService.getProfile: Query filter used', { queryFilter });
+      const queryFilter = { _created_by: 'eq.' + user_id };
+      console.log('🔍 profileService.getProfile: Query filter used', { 
+        filter: queryFilter,
+        user_id: user_id,
+        filterString: `_created_by=eq.${user_id}`
+      });
       
       const { data: profiles } = await db.query('player_profiles', queryFilter);
 
       console.log('📊 profileService.getProfile: Profile query result', { 
         profileCount: profiles?.length || 0,
+        userId: user_id,
         profiles: profiles?.map(p => ({
           _row_id: p._row_id,
           _created_by: p._created_by,
@@ -902,21 +921,33 @@ export const profileService = {
 
       // Return the first (and only) profile
       if (profiles && profiles.length > 0) {
+        const profile = profiles[0];
         console.log('📋 profileService.getProfile: Returning user profile', {
-          _row_id: profiles[0]._row_id,
-          _created_by: profiles[0]._created_by,
-          username: profiles[0].username,
-          display_name: profiles[0].display_name,
-          avatar_url: profiles[0].avatar_url
+          _row_id: profile._row_id,
+          _created_by: profile._created_by,
+          username: profile.username,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url
         });
-        return profiles[0];
+        
+        // Verify the profile belongs to our user
+        if (profile._created_by !== user_id) {
+          console.error('❌ profileService.getProfile: SECURITY ERROR - Profile belongs to different user!', {
+            expectedUser: user_id,
+            actualUser: profile._created_by
+          });
+          throw new Error('Security error: Profile ownership mismatch');
+        }
+        
+        return profile;
       }
 
       console.log('⚠️ profileService.getProfile: No profile found for user');
       console.log('❓ profileService.getProfile: Possible issues:');
-      console.log('  1. user.id does not match any _created_by in player_profiles');
+      console.log('  1. user.id (' + user_id + ') does not match any _created_by in player_profiles');
       console.log('  2. RLS policy blocking access');
       console.log('  3. User never created a profile');
+      console.log('  4. Database connection issue');
       return null;
     } catch (error) {
       console.error('❌ profileService.getProfile: Failed to fetch player profile', error);
@@ -937,15 +968,29 @@ export const profileService = {
     try {
       console.log('🔧 profileService.updateProfile: Starting UPSERT', { data });
       const user = await auth.getUser();
+      
+      console.log('🔧 profileService.updateProfile: RAW USER FROM auth.getUser():', user);
+      
       if (!user) {
         console.log('❌ profileService.updateProfile: User not authenticated');
         throw new Error('User not authenticated');
       }
 
+      // Check all possible ID fields like in AuthContext
+      const user_id = user.id || user.uuid || user._id || user.userId || user.user_id || user.sub;
+      
       console.log('👤 profileService.updateProfile: WHO AM I - User details', { 
-        userId: user.id,
-        userEmail: user.email
+        userId: user_id,
+        userEmail: user.email,
+        userName: user.name,
+        firstName: user.firstName,
+        allFields: Object.keys(user)
       });
+      
+      if (!user_id || user_id === 'UNKNOWN') {
+        console.error('❌ profileService.updateProfile: No valid user ID found in user object');
+        throw new Error('Invalid user session - no valid ID found');
+      }
 
       // Validation rules
       if (data.username) {
@@ -961,7 +1006,7 @@ export const profileService = {
           username: 'eq.' + data.username
         });
 
-        const otherUserProfiles = existingProfiles?.filter(profile => profile._created_by !== user.id) || [];
+        const otherUserProfiles = existingProfiles?.filter(profile => profile._created_by !== user_id) || [];
         
         if (otherUserProfiles.length > 0) {
           console.log('❌ profileService.updateProfile: Username already taken by another user', { 
@@ -989,7 +1034,7 @@ export const profileService = {
       // UPSERT LOGIC: Check if user has existing profile
       console.log('🔍 profileService.updateProfile: Checking for existing profile by user ID');
       const { data: existingProfiles } = await db.query('player_profiles', {
-        _created_by: 'eq.' + user.id
+        _created_by: 'eq.' + user_id
       });
 
       console.log('📊 profileService.updateProfile: Existing profile check', { 
@@ -1075,7 +1120,7 @@ export const profileService = {
         console.log('➕ profileService.updateProfile: INSERT mode - creating new profile');
         const newProfileData = {
           ...data,
-          _created_by: user.id,
+          _created_by: user_id,
           _created_at: Math.floor(Date.now() / 1000),
           _updated_at: Math.floor(Date.now() / 1000)
         };
@@ -1089,7 +1134,7 @@ export const profileService = {
       // Verify the UPSERT by querying the profile again
       console.log('🔍 profileService.updateProfile: Verifying UPSERT result');
       const { data: verificationProfile } = await db.query('player_profiles', {
-        _created_by: 'eq.' + user.id
+        _created_by: 'eq.' + user_id
       });
 
       if (verificationProfile && verificationProfile.length === 1) {
@@ -1142,7 +1187,10 @@ export const profileService = {
         return false;
       }
 
-      console.log('👤 profileService.checkUsername: User authenticated for username check', { userId: user.id });
+      // Check all possible ID fields like in AuthContext
+      const user_id = user.id || user.uuid || user._id || user.userId || user.user_id || user.sub;
+      
+      console.log('👤 profileService.checkUsername: User authenticated for username check', { userId: user_id });
 
       const { data: profiles } = await db.query('player_profiles', {
         username: 'eq.' + username
@@ -1160,7 +1208,7 @@ export const profileService = {
 
       // Check if any existing username belongs to someone else
       if (profiles && profiles.length > 0) {
-        const otherUserProfiles = profiles.filter(profile => profile._created_by !== user.id);
+        const otherUserProfiles = profiles.filter(profile => profile._created_by !== user_id);
         const isAvailable = otherUserProfiles.length === 0;
         
         console.log('📊 profileService.checkUsername: Username availability result', { 
