@@ -36,8 +36,30 @@ const ScrollToTop = () => {
   const location = useLocation();
 
   useEffect(() => {
+    console.log('Scrolling to top for route:', location.pathname + location.search);
+    
+    // Force immediate scroll to top
     window.scrollTo(0, 0);
-  }, [location.pathname]);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Find and scroll the main content area too (inside Layout)
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.scrollTop = 0;
+    }
+    
+    // Force scroll after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const mainElement = document.querySelector('main');
+      if (mainElement) {
+        mainElement.scrollTop = 0;
+      }
+    }, 10);
+  }, [location.pathname, location.search]);
 
   return null;
 };
