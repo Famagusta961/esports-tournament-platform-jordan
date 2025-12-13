@@ -4,6 +4,7 @@ import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield, Home, Up
 import { Button } from '@/components/ui/button';
 import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
+import React from 'react';
 
 interface UserData {
   firstName?: string;
@@ -57,6 +58,32 @@ const Navbar = () => {
     { name: 'Leaderboard', href: '/leaderboard', icon: Users },
   ];
 
+  const scrollToTop = () => {
+    // Find the actual scroll container in order of likelihood
+    const scrollContainer = 
+      document.querySelector('main') ||           // Layout's main (most likely)
+      document.querySelector('#root') ||           // React root
+      document.documentElement ||                 // HTML element
+      document.body;                             // Body element
+
+    // Reset scroll position on the identified container
+    if (scrollContainer && 'scrollTo' in scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+    
+    // Also reset window scroll as fallback
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
+  const handleNavClick = (targetPath: string) => (e: React.MouseEvent) => {
+    if (location.pathname === targetPath) {
+      e.preventDefault();
+      requestAnimationFrame(scrollToTop);
+    }
+  };
+
   const isActive = (path: string) => location.pathname === path;
 
   return (
@@ -66,7 +93,11 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo - Shows on all devices */}
-          <Link to="/" className="flex items-center group">
+          <Link 
+            to="/" 
+            onClick={handleNavClick('/')}
+            className="flex items-center group"
+          >
             <div className="relative">
               <img 
                 src="/arenajo-logo-rectangle.png" 
@@ -83,6 +114,7 @@ const Navbar = () => {
               <Link
                 key={link.name}
                 to={link.href}
+                onClick={handleNavClick(link.href)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-gaming font-semibold text-lg transition-all duration-200 ${
                   isActive(link.href)
                     ? 'text-primary bg-primary/10'
@@ -163,7 +195,10 @@ const Navbar = () => {
               <Link
                 key={link.name}
                 to={link.href}
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  handleNavClick(link.href)(e);
+                  setIsOpen(false);
+                }}
                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-gaming font-semibold text-lg transition-all ${
                   isActive(link.href)
                     ? 'text-primary bg-primary/10'

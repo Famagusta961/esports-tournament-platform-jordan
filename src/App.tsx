@@ -43,30 +43,24 @@ const ScrollToTop = () => {
       window.history.scrollRestoration = 'manual';
     }
     
-    // Use requestAnimationFrame to ensure DOM is fully rendered
+    // Match the same logic as the navbar for consistency
     const scrollToTop = () => {
-      // Try all possible scroll containers
-      window.scrollTo(0, 0);
+      // Find the actual scroll container in order of likelihood
+      const scrollContainer = 
+        document.querySelector('main') ||           // Layout's main (most likely)
+        document.querySelector('#root') ||           // React root
+        document.documentElement ||                 // HTML element
+        document.body;                             // Body element
+
+      // Reset scroll position on the identified container
+      if (scrollContainer && 'scrollTo' in scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+      
+      // Also reset window scroll as fallback
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-      
-      // Find and scroll the main content area (the real scroll container)
-      const mainElement = document.querySelector('main');
-      if (mainElement) {
-        mainElement.scrollTop = 0;
-      }
-      
-      // Also try the root element
-      const rootElement = document.getElementById('root');
-      if (rootElement) {
-        rootElement.scrollTop = 0;
-      }
-      
-      // Try any element that might be the scroll container
-      const scrollContainer = document.querySelector('[data-scroll-container]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = 0;
-      }
     };
     
     // Execute immediately and then in the next animation frame
