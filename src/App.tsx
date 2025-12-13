@@ -38,27 +38,44 @@ const ScrollToTop = () => {
   useEffect(() => {
     console.log('Scrolling to top for route:', location.pathname + location.search);
     
-    // Force immediate scroll to top
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    
-    // Find and scroll the main content area too (inside Layout)
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      mainElement.scrollTop = 0;
+    // First, disable browser's automatic scroll restoration
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
     }
     
-    // Force scroll after a short delay to ensure DOM is ready
-    setTimeout(() => {
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    const scrollToTop = () => {
+      // Try all possible scroll containers
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
+      
+      // Find and scroll the main content area (the real scroll container)
       const mainElement = document.querySelector('main');
       if (mainElement) {
         mainElement.scrollTop = 0;
       }
-    }, 10);
+      
+      // Also try the root element
+      const rootElement = document.getElementById('root');
+      if (rootElement) {
+        rootElement.scrollTop = 0;
+      }
+      
+      // Try any element that might be the scroll container
+      const scrollContainer = document.querySelector('[data-scroll-container]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
+    };
+    
+    // Execute immediately and then in the next animation frame
+    scrollToTop();
+    requestAnimationFrame(scrollToTop);
+    
+    // Additional fallback after a short delay
+    setTimeout(scrollToTop, 50);
+    
   }, [location.pathname, location.search]);
 
   return null;
