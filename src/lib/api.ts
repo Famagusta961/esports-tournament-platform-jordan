@@ -817,12 +817,23 @@ export const profileService = {
           throw new Error('Username must be 3-20 characters and contain only letters, numbers, and underscores');
         }
 
-        // Check if username is already taken (exclude current user)
+        // Check if user has an existing profile first
+        console.log('🔍 profileService.updateProfile: Getting current user profile for username check');
+        const { data: currentProfile } = await db.query('player_profiles', {
+          _created_by: 'eq.' + user.id
+        });
+
+        console.log('📊 profileService.updateProfile: Current user profile', { 
+          currentProfile: currentProfile?.[0] 
+        });
+
+        // Check if username is already taken (exclude current user's own profile)
+        console.log('🔍 profileService.updateProfile: Checking username uniqueness');
         const { data: existingProfiles } = await db.query('player_profiles', {
           username: 'eq.' + data.username
         });
 
-        console.log('🔍 profileService.updateProfile: Checking username uniqueness', { 
+        console.log('📊 profileService.updateProfile: Checking username uniqueness', { 
           username: data.username,
           existingCount: existingProfiles?.length || 0,
           existingProfiles: existingProfiles?.map(p => ({ 
@@ -832,14 +843,25 @@ export const profileService = {
           }))
         });
 
+        // Check if any existing username belongs to someone else
         if (existingProfiles && existingProfiles.length > 0) {
-          const isOwnProfile = existingProfiles.some(profile => profile._created_by === user.id);
-          if (!isOwnProfile) {
-            console.log('❌ profileService.updateProfile: Username already taken by another user');
-            throw new Error('Username is already taken');
+          console.log('🔍 profileService.updateProfile: Found profiles with username, checking ownership');
+          const otherUserProfiles = existingProfiles.filter(profile => profile._created_by !== user.id);
+          
+          if (otherUserProfiles.length > 0) {
+            console.log('❌ profileService.updateProfile: Username already taken by another user', { 
+              otherProfiles: otherUserProfiles.map(p => ({ 
+                _row_id: p._row_id, 
+                username: p.username, 
+                _created_by: p._created_by 
+              }))
+            });
+            throw new Error('Username already taken, please choose another one.');
           } else {
-            console.log('✅ profileService.updateProfile: Username belongs to current user');
+            console.log('✅ profileService.updateProfile: Username belongs to current user (or is being reclaimed)');
           }
+        } else {
+          console.log('✅ profileService.updateProfile: Username is available');
         }
       }
 
@@ -918,18 +940,51 @@ export const profileService = {
         return false;
       }
 
+      // Get current user
+      const user = await auth.getUser();
+      if (!user) {
+        console.log('❌ profileService.checkUsername: User not authenticated');
+        return false;
+      }
+
+      console.log('👤 profileService.checkUsername: User authenticated for username check', { userId: user.id });
+
       const { data: profiles } = await db.query('player_profiles', {
         username: 'eq.' + username
       });
 
-      const isAvailable = !profiles || profiles.length === 0;
-      console.log('📊 profileService.checkUsername: Username availability result', { 
+      console.log('📊 profileService.checkUsername: Found profiles with username', { 
         username,
         profileCount: profiles?.length || 0,
-        isAvailable 
+        profiles: profiles?.map(p => ({ 
+          _row_id: p._row_id, 
+          username: p.username, 
+          _created_by: p._created_by 
+        }))
       });
 
-      return isAvailable;
+      // Check if any existing username belongs to someone else
+      if (profiles && profiles.length > 0) {
+        const otherUserProfiles = profiles.filter(profile => profile._created_by !== user.id);
+        const isAvailable = otherUserProfiles.length === 0;
+        
+        console.log('📊 profileService.checkUsername: Username availability result', { 
+          username,
+          profileCount: profiles?.length || 0,
+          otherUserProfiles: otherUserProfiles.length,
+          isAvailable 
+        });
+        
+        return isAvailable;
+      }
+
+      console.log('📊 profileService.checkUsername: Username availability result', { 
+        username,
+        profileCount: 0,
+        isAvailable: true 
+      });
+
+      return true;
     } catch (error) {
       console.error('❌ profileService.checkUsername: Failed to check username availability', error);
       handleApiError(error, 'Failed to check username availability');
