@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
 import auth from '@/lib/shared/kliv-auth.js';
+import { profileService } from '@/lib/api';
+import EditProfileModal from '@/components/profile/EditProfileModal';
 
 interface UserData {
   firstName?: string;
@@ -37,31 +39,85 @@ const mockGameIds = [
   { game: 'Valorant', id: 'Phoenix#JOR', platform: 'PC' },
 ];
 
+const COUNTRIES = [
+  { code: 'JO', name: 'Jordan' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'EG', name: 'Egypt' },
+  { code: 'LB', name: 'Lebanon' },
+  { code: 'QA', name: 'Qatar' },
+  { code: 'BH', name: 'Bahrain' },
+  { code: 'KW', name: 'Kuwait' },
+  { code: 'OM', name: 'Oman' },
+  { code: 'IQ', name: 'Iraq' },
+  { code: 'SY', name: 'Syria' },
+  { code: 'PS', name: 'Palestine' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'IR', name: 'Iran' },
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+];
+
 const Profile = () => {
   const [user, setUser] = useState<UserData | null>(null);
+  interface PlayerProfile {
+  _row_id?: number;
+  display_name?: string;
+  username?: string;
+  avatar_url?: string;
+  bio?: string;
+  country?: string;
+  current_rank?: string;
+}
+
+const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadUser = async () => {
-      const currentUser = await auth.getUser();
-      if (!currentUser) {
-        navigate('/login');
-        return;
+    const loadData = async () => {
+      try {
+        const currentUser = await auth.getUser();
+        if (!currentUser) {
+          navigate('/login');
+          return;
+        }
+        setUser(currentUser);
+
+        // Load player profile
+        const playerProfile = await profileService.getProfile();
+        setProfile(playerProfile);
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load profile data:', error);
+        setLoading(false);
       }
-      setUser(currentUser);
-      setLoading(false);
     };
-    loadUser();
+    loadData();
   }, [navigate]);
 
   const handleEditProfile = () => {
-    // For now, show a toast. In a real implementation, this would open a modal or navigate to edit page
-    toast({
-      title: "Edit Profile",
-      description: "Profile editing feature coming soon!",
-    });
+    setEditModalOpen(true);
+  };
+
+  const handleProfileUpdate = () => {
+    // Reload profile data after update
+    const loadProfile = async () => {
+      try {
+        const playerProfile = await profileService.getProfile();
+        setProfile(playerProfile);
+      } catch (error) {
+        console.error('Failed to reload profile:', error);
+      }
+    };
+    loadProfile();
   };
 
   const handleLogout = async () => {
@@ -83,6 +139,7 @@ const Profile = () => {
     );
   }
 
+
   return (
     <Layout>
       <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
@@ -98,12 +155,25 @@ const Profile = () => {
             <div className="px-6 sm:px-8 pb-6">
               {/* Avatar */}
               <div className="relative -mt-16 mb-4">
-                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center border-4 border-card shadow-xl">
-                  <span className="font-display font-bold text-4xl sm:text-5xl text-white">
-                    {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'P'}
-                  </span>
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center border-4 border-card shadow-xl overflow-hidden">
+                  {profile?.avatar_url ? (
+                    <img 
+                      src={profile.avatar_url} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-display font-bold text-4xl sm:text-5xl text-white">
+                      {profile?.display_name?.[0] || user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'P'}
+                    </span>
+                  )}
                 </div>
-                <Button size="icon" variant="secondary" className="absolute bottom-0 right-0 rounded-full w-8 h-8">
+                <Button 
+                  size="icon" 
+                  variant="secondary" 
+                  className="absolute bottom-0 right-0 rounded-full w-8 h-8"
+                  onClick={handleEditProfile}
+                >
                   <Edit className="w-4 h-4" />
                 </Button>
               </div>
@@ -112,21 +182,37 @@ const Profile = () => {
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
                   <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1">
-                    {user?.firstName || 'Player'} {user?.lastName || ''}
+                    {profile?.display_name || user?.firstName || 'Player'} {user?.lastName || ''}
                   </h1>
+                  {profile?.username && (
+                    <p className="text-muted-foreground font-gaming flex items-center space-x-2">
+                      <User className="w-4 h-4" />
+                      <span>@{profile.username}</span>
+                    </p>
+                  )}
                   <p className="text-muted-foreground font-gaming flex items-center space-x-2">
                     <Mail className="w-4 h-4" />
                     <span>{user?.email}</span>
                   </p>
+                  {profile?.bio && (
+                    <p className="text-muted-foreground font-gaming mt-2 text-sm">
+                      {profile.bio}
+                    </p>
+                  )}
                   <div className="flex items-center space-x-2 mt-2">
                     <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30">
                       <Star className="w-3 h-3 mr-1" />
-                      {mockStats.currentRank}
+                      {profile?.current_rank || mockStats.currentRank}
                     </Badge>
                     {user?.emailVerified && (
                       <Badge variant="secondary">
                         <Shield className="w-3 h-3 mr-1" />
                         Verified
+                      </Badge>
+                    )}
+                    {profile?.country && (
+                      <Badge variant="outline">
+                        {COUNTRIES.find(c => c.code === profile.country)?.name || profile.country}
                       </Badge>
                     )}
                   </div>
@@ -243,11 +329,11 @@ const Profile = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="settings" className="space-y-4">
+          <TabsContent value="settings" className="space-y-4">
               <div className="rounded-xl bg-card border border-border p-6">
                 <h3 className="font-display font-semibold mb-4">Account Settings</h3>
                 <div className="space-y-4">
-                  <Button variant="outline" className="w-full justify-start font-gaming">
+                  <Button variant="outline" className="w-full justify-start font-gaming" onClick={handleEditProfile}>
                     <User className="w-4 h-4 mr-2" />
                     Update Profile Information
                   </Button>
@@ -261,8 +347,16 @@ const Profile = () => {
                   </Button>
                 </div>
               </div>
-            </TabsContent>
+          </TabsContent>
           </Tabs>
+
+          {/* Edit Profile Modal */}
+          <EditProfileModal
+            isOpen={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+            currentProfile={profile}
+            onProfileUpdate={handleProfileUpdate}
+          />
         </div>
       </div>
     </Layout>

@@ -726,6 +726,117 @@ export const userService = {
     }
   }
 };
+// Player Profile service using database SDK
+export const profileService = {
+  // Get player profile
+  getProfile: async () => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: profiles } = await db.query('player_profiles', {
+        _created_by: 'eq.' + user.id
+      });
+
+      return profiles?.[0] || null;
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch player profile');
+    }
+  },
+
+  // Create or update player profile
+  updateProfile: async (data: {
+    display_name?: string;
+    username?: string;
+    avatar_url?: string;
+    bio?: string;
+    country?: string;
+  }) => {
+    try {
+      const user = await auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Validation rules
+      if (data.username) {
+        // Username must be 3-20 characters, letters, numbers, underscores only
+        if (!/^[a-zA-Z0-9_]{3,20}$/.test(data.username)) {
+          throw new Error('Username must be 3-20 characters and contain only letters, numbers, and underscores');
+        }
+
+        // Check if username is already taken (exclude current user)
+        const { data: existingProfiles } = await db.query('player_profiles', {
+          username: 'eq.' + data.username
+        });
+
+        if (existingProfiles && existingProfiles.length > 0) {
+          const isOwnProfile = existingProfiles.some(profile => profile._created_by === user.id);
+          if (!isOwnProfile) {
+            throw new Error('Username is already taken');
+          }
+        }
+      }
+
+      if (data.display_name && data.display_name.length > 50) {
+        throw new Error('Display name must be 50 characters or less');
+      }
+
+      if (data.bio && data.bio.length > 500) {
+        throw new Error('Bio must be 500 characters or less');
+      }
+
+      // Check if profile exists
+      const { data: existingProfiles } = await db.query('player_profiles', {
+        _created_by: 'eq.' + user.id
+      });
+
+      const profileData = {
+        ...data,
+        _updated_at: Math.floor(Date.now() / 1000) // Current timestamp
+      };
+
+      if (existingProfiles && existingProfiles.length > 0) {
+        // Update existing profile
+        const updatedProfile = await db.update('player_profiles', 
+          { _row_id: 'eq.' + existingProfiles[0]._row_id }, 
+          profileData
+        );
+        return updatedProfile;
+      } else {
+        // Create new profile
+        const newProfile = await db.insert('player_profiles', {
+          ...profileData,
+          _created_by: user.id,
+          _created_at: Math.floor(Date.now() / 1000)
+        });
+        return newProfile;
+      }
+    } catch (error) {
+      handleApiError(error, 'Failed to update player profile');
+    }
+  },
+
+  // Check if username is available
+  checkUsername: async (username: string): Promise<boolean> => {
+    try {
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+        return false;
+      }
+
+      const { data: profiles } = await db.query('player_profiles', {
+        username: 'eq.' + username
+      });
+
+      return !profiles || profiles.length === 0;
+    } catch (error) {
+      handleApiError(error, 'Failed to check username availability');
+      return false;
+    }
+  }
+};
 
 // Team service using edge functions
 export const teamService = {
