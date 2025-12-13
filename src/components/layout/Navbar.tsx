@@ -60,6 +60,7 @@ const Navbar = () => {
   ];
 
   const onNavClick = (targetPath: string) => (e: React.MouseEvent) => {
+    console.log('onNavClick called for:', targetPath, 'current:', location.pathname);
     if (location.pathname === targetPath) {
       e.preventDefault();
       console.log('Same route clicked, scrolling to top');
@@ -116,13 +117,13 @@ const Navbar = () => {
               <>
                 {isAdmin && (
                   <>
-                    <Link to="/image-test">
+                    <Link to="/image-test" onClick={() => console.log('Image test clicked')}>
                       <Button variant="ghost" size="sm" className="font-gaming">
                         <Upload className="w-4 h-4 mr-2" />
                         Test Upload
                       </Button>
                     </Link>
-                    <Link to="/admin">
+                    <Link to="/admin" onClick={() => { console.log('Admin desktop clicked'); }}>
                       <Button variant="ghost" size="sm" className="font-gaming">
                         <Shield className="w-4 h-4 mr-2" />
                         Admin
@@ -130,13 +131,16 @@ const Navbar = () => {
                     </Link>
                   </>
                 )}
-                <Link to="/wallet" onClick={onNavClick('/wallet')}>
+                <Link to="/wallet" onClick={(e) => {
+              console.log('Wallet desktop clicked - raw');  
+              onNavClick('/wallet')(e);
+            }}>
                   <Button variant="ghost" size="sm" className="font-gaming">
                     <Wallet className="w-4 h-4 mr-2" />
                     Wallet
                   </Button>
                 </Link>
-                <Link to="/profile">
+                <Link to="/profile" onClick={() => console.log('Profile desktop clicked')}>
                   <Button variant="outline" className="font-gaming border-primary/50 hover:border-primary hover:bg-primary/10">
                     <User className="w-4 h-4 mr-2" />
                     {user.firstName || 'Profile'}
@@ -206,6 +210,7 @@ const Navbar = () => {
                   <Link 
                     to="/wallet" 
                     onClick={(e) => {
+                      console.log('Wallet mobile clicked - raw');  
                       onNavClick('/wallet')(e);
                       setIsOpen(false);
                     }}
@@ -215,7 +220,7 @@ const Navbar = () => {
                       Wallet
                     </Button>
                   </Link>
-                  <Link to="/profile" onClick={() => setIsOpen(false)}>
+                  <Link to="/profile" onClick={() => { console.log('Profile mobile clicked'); setIsOpen(false); }}>
                     <Button variant="outline" className="w-full justify-start font-gaming">
                       <User className="w-5 h-5 mr-3" />
                       Profile
