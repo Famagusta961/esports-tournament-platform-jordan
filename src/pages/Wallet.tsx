@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
 import auth from '@/lib/shared/kliv-auth.js';
 
 interface WalletBalance {
@@ -13,6 +14,8 @@ interface WalletBalance {
 export default function Wallet() {
   console.count("Wallet render");
   
+  const { toast } = useToast();
+  
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<WalletBalance>({
     current_balance: 0,
@@ -22,6 +25,10 @@ export default function Wallet() {
   });
   
   const [transactionsLoading, setTransactionsLoading] = useState(true);
+
+  // C3: Throttled toast refs - separate for balance and transactions
+  const balanceErrorShownRef = useRef(false);
+  const transactionsErrorShownRef = useRef(false);
 
   // Only fetch balance when user.uuid is available
   useEffect(() => {
@@ -72,7 +79,16 @@ export default function Wallet() {
       } catch (err) {
         if (aborted) return;
         console.error(" WALLET: Balance fetch error:", err);
-        // Don't show toast in C1 - keep it minimal
+        
+        // C3: Throttled toast for balance errors
+        if (!balanceErrorShownRef.current) {
+          balanceErrorShownRef.current = true;
+          toast({
+            title: "Balance Error",
+            description: "Failed to load balance. Please try again.",
+            variant: "destructive",
+          });
+        }
       } finally {
         if (!aborted) {
           setLoading(false);
@@ -92,6 +108,17 @@ export default function Wallet() {
       } catch (err) {
         if (!aborted) {
           console.error(" WALLET: Balance fetch failed or timed out:", err);
+          
+          // C3: Throttled toast for timeout errors
+          if (!balanceErrorShownRef.current) {
+            balanceErrorShownRef.current = true;
+            toast({
+              title: "Balance Error", 
+              description: "Balance request timed out. Please refresh.",
+              variant: "destructive",
+            });
+          }
+          
           setLoading(false);
         }
       }
@@ -103,9 +130,10 @@ export default function Wallet() {
     };
   }, []); // Dependency array is empty - effect runs once
   
-  // Separate effect for transactions - C2 (simplified)
+  // Separate effect for transactions - C2
   useEffect(() => {
     let aborted = false;
+    const didLoadRef = { current: false };
 
     const fetchTransactions = async () => {
       try {
@@ -119,6 +147,12 @@ export default function Wallet() {
           return;
         }
 
+        if (didLoadRef.current) {
+          console.log(" WALLET: Already loading transactions - skipping");
+          return;
+        }
+        didLoadRef.current = true;
+
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -129,6 +163,16 @@ export default function Wallet() {
       } catch (err) {
         if (aborted) return;
         console.error(" WALLET: Transactions fetch error:", err);
+        
+        // C3: Throttled toast for transactions errors
+        if (!transactionsErrorShownRef.current) {
+          transactionsErrorShownRef.current = true;
+          toast({
+            title: "Transactions Error",
+            description: "Failed to load transaction history. Please try again.",
+            variant: "destructive",
+          });
+        }
       } finally {
         if (!aborted) {
           setTransactionsLoading(false);
@@ -137,7 +181,32 @@ export default function Wallet() {
       }
     };
 
-    fetchTransactions();
+    // 10-second timeout wrapper
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Transactions fetch timeout')), 10000);
+    });
+
+    (async () => {
+      try {
+        await Promise.race([fetchTransactions(), timeoutPromise]);
+      } catch (err) {
+        if (!aborted) {
+          console.error(" WALLET: Transactions fetch failed or timed out:", err);
+          
+          // C3: Throttled toast for timeout errors
+          if (!transactionsErrorShownRef.current) {
+            transactionsErrorShownRef.current = true;
+            toast({
+              title: "Transactions Error",
+              description: "Transaction request timed out. Please refresh.",
+              variant: "destructive",
+            });
+          }
+          
+          setTransactionsLoading(false);
+        }
+      }
+    })();
 
     return () => {
       aborted = true;
