@@ -81,32 +81,48 @@ const GameCategories = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const scroll = (direction: 'left' | 'right') => {
     const container = containerRef.current;
     if (!container) return;
     
-    const scrollAmount = 400; // Adjusted for larger cards
+    // Calculate center-aligned scroll position for precise centering
+    const containerWidth = container.clientWidth;
+    const cardWidth = window.innerWidth < 640 ? 288 : 224; // Mobile: w-72, Desktop: w-56
+    const gap = 24; // gap-6
+    
+    let newIndex;
     if (direction === 'left') {
-      container.scrollLeft -= scrollAmount;
+      newIndex = Math.max(0, currentIndex - 1);
     } else {
-      container.scrollLeft += scrollAmount;
+      newIndex = Math.min(games.length - 1, currentIndex + 1);
     }
+    
+    setCurrentIndex(newIndex);
+    
+    // Calculate exact center scroll position
+    const targetScrollLeft = newIndex * (cardWidth + gap) - (containerWidth - cardWidth) / 2;
+    container.scrollLeft = targetScrollLeft;
   };
 
   const checkScrollButtons = () => {
-    const container = containerRef.current;
-    if (!container) return;
-    
-    setCanScrollLeft(container.scrollLeft > 0);
-    setCanScrollRight(
-      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
-    );
+    setCanScrollLeft(currentIndex > 0);
+    setCanScrollRight(currentIndex < games.length - 1);
   };
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    
+    // Initialize with first game centered
+    setTimeout(() => {
+      const containerWidth = container.clientWidth;
+      const cardWidth = window.innerWidth < 640 ? 288 : 224;
+      const gap = 24;
+      const targetScrollLeft = 0 * (cardWidth + gap) - (containerWidth - cardWidth) / 2;
+      container.scrollLeft = -targetScrollLeft; // Starting position
+    }, 100);
     
     checkScrollButtons();
     container.addEventListener('scroll', checkScrollButtons);
@@ -116,7 +132,7 @@ const GameCategories = () => {
       container.removeEventListener('scroll', checkScrollButtons);
       window.removeEventListener('resize', checkScrollButtons);
     };
-  }, []);
+  }, [currentIndex]);
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
@@ -167,13 +183,18 @@ const GameCategories = () => {
           {/* Games Horizontal Scroll */}
           <div
             ref={containerRef}
-            className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth py-2 px-2"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="flex gap-6 overflow-x-auto scrollbar-hide py-2 px-2 snap-x snap-mandatory"
+            style={{ 
+              scrollbarWidth: 'none', 
+              msOverflowStyle: 'none',
+              scrollSnapType: 'x mandatory',
+              scrollBehavior: 'smooth'
+            }}
           >
             {games.map((game, index) => (
               <div
                 key={game.id}
-                className="flex-none w-48 sm:w-56 animate-slide-up"
+                className="flex-none w-72 sm:w-56 animate-slide-up snap-center"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Link
@@ -186,7 +207,7 @@ const GameCategories = () => {
                   {/* Content */}
                   <div className="relative p-6 text-center">
                     {/* Game Image */}
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
+                    <div className="w-24 h-24 sm:w-24 sm:h-24 mx-auto mb-6 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
                       {game.image ? (
                         <img 
                           src={game.image} 
@@ -195,18 +216,18 @@ const GameCategories = () => {
                           style={{ width: '100%', height: '100%' }}
                         />
                       ) : (
-                        <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground" />
+                        <ImageIcon className="w-10 h-10 sm:w-10 sm:h-10 text-muted-foreground" />
                       )}
                     </div>
                     
                     {/* Game Name */}
-                    <h3 className="font-gaming font-semibold text-base sm:text-lg mb-3 group-hover:text-primary transition-colors">
+                    <h3 className="font-gaming font-semibold text-lg xl:text-xl mb-3 group-hover:text-primary transition-colors">
                       {game.name}
                     </h3>
                     
                     {/* Stats */}
-                    <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
-                      <span className="px-3 py-1 rounded-full bg-primary/10 text-primary">
+                    <div className="flex items-center justify-center space-x-2 text-base text-muted-foreground">
+                      <span className="px-4 py-2 rounded-full bg-primary/10 text-primary font-medium">
                         {game.activeTournaments} Active
                       </span>
                     </div>
