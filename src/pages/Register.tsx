@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import WhatsAppButton from '@/components/ui/WhatsAppButton';
 import auth from '@/lib/shared/kliv-auth.js';
 
 const Register = () => {
@@ -239,7 +238,6 @@ const Register = () => {
           </div>
         </div>
       </div>
-      <WhatsAppButton />
     </div>
   );
 };

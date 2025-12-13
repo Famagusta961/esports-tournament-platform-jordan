@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import WhatsAppButton from '@/components/ui/WhatsAppButton';
 import auth from '@/lib/shared/kliv-auth.js';
 
 const Login = () => {
@@ -163,7 +162,7 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.password)}
                   className="pl-10 pr-10 bg-muted/50 border-border font-gaming"
                   required
                 />
@@ -203,7 +202,6 @@ const Login = () => {
           </div>
         </div>
       </div>
-      <WhatsAppButton />
     </div>
   );
 };
