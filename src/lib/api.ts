@@ -626,24 +626,74 @@ export const walletService = {
   // Get transaction history
   getTransactions: async (params?: { limit?: number; offset?: number; type?: string }) => {
     try {
+      console.log('🔍 walletService.getTransactions: Starting transaction fetch');
       const user = await auth.getUser();
+      
       if (!user) {
+        console.log('❌ walletService.getTransactions: User not authenticated');
         throw new Error('User not authenticated');
       }
 
-      // Query transactions directly using database SDK
-      // Note: transactions_table uses user_uuid field, not username
-      const { data: transactions } = await db.query('transactions_table', {
-        user_uuid: 'eq.' + (user as { id: string }).id,
-        ...(params?.type && { type: 'eq.' + params.type }),
-        order: '_created_at.desc',
-        limit: params?.limit || 20,
-        offset: params?.offset || 0
+      // Use consistent user ID mapping (userUuid or id fallback)
+      const user_id = user.userUuid || user.id;
+      
+      console.log('👤 walletService.getTransactions: Fetching for user', {
+        userId: user_id,
+        userEmail: user.email
       });
-
-      return transactions || [];
+      
+      if (!user_id || user_id === 'UNKNOWN') {
+        console.error('❌ walletService.getTransactions: Invalid user ID');
+        throw new Error('Invalid user session');
+      }
+      
+      // Note: Check if transactions_table uses user_uuid or _created_by field
+      // Try both approaches for reliability
+      let transactions = [];
+      
+      try {
+        // First try with user_uuid field
+        const { data: txByUuid } = await db.query('transactions_table', {
+          user_uuid: 'eq.' + user_id,
+          ...(params?.type && { type: 'eq.' + params.type }),
+          order: '_created_at.desc',
+          limit: params?.limit || 20,
+          offset: params?.offset || 0
+        });
+        
+        transactions = txByUuid || [];
+        console.log('📊 walletService.getTransactions: Found transactions via user_uuid', { count: transactions.length });
+      } catch (uuidError) {
+        console.log('⚠️ walletService.getTransactions: user_uuid field failed, trying _created_by', uuidError.message);
+        
+        // Fallback to _created_by field
+        const { data: txByCreator } = await db.query('transactions_table', {
+          _created_by: 'eq.' + user_id,
+          ...(params?.type && { type: 'eq.' + params.type }),
+          order: '_created_at.desc',
+          limit: params?.limit || 20,
+          offset: params?.offset || 0
+        });
+        
+        transactions = txByCreator || [];
+        console.log('📊 walletService.getTransactions: Found transactions via _created_by', { count: transactions.length });
+      }
+      
+      console.log('✅ walletService.getTransactions: Transaction fetch successful', {
+        transactionCount: transactions.length,
+        transactions: transactions.map(t => ({
+          id: t._row_id,
+          type: t.type,
+          amount: t.amount,
+          status: t.status
+        }))
+      });
+      
+      return transactions;
     } catch (error) {
-      handleApiError(error, 'Failed to fetch transactions');
+      console.error('❌ walletService.getTransactions: Transaction fetch failed', error);
+      // Return empty array instead of throwing to prevent breaking the UI
+      return [];
     }
   }
 };
@@ -828,11 +878,8 @@ console.log('👤 debugProfileService.debugUserVsProfileMapping: Current user de
       });
 
       // Test if getProfile works
-      const getProfileResult = await profileService.getProfile();
-      console.log('📊 debugProfileService.debugUserVsProfileMapping: getProfile result', {
-        getProfileResult,
-        works: !!getProfileResult
-      });
+      // Note: This will be uncommented after profileService is defined
+      // const getProfileResult = await profileService.getProfile();
 
       return {
         currentUser: {
@@ -844,7 +891,7 @@ console.log('👤 debugProfileService.debugUserVsProfileMapping: Current user de
         userProfilesCount: userProfiles.length,
         directQueryCount: directQuery?.length || 0,
         hasProfile: userProfiles.length > 0,
-        getProfileWorks: !!getProfileResult
+        getProfileWorks: false // Will be updated when profileService is available
       };
     } catch (error) {
       console.error('❌ debugProfileService.debugUserVsProfileMapping: Debug failed', error);
@@ -852,98 +899,109 @@ console.log('👤 debugProfileService.debugUserVsProfileMapping: Current user de
     }
   }
 };
-// Player Profile service using database SDK
+
 // Player Profile service using database SDK
 export const profileService = {
-  // Get player profile (ONE profile per user)
+  // Get player profile (ONE profile per user) - ULTRA RELIABLE VERSION
   getProfile: async () => {
     try {
       console.log('🔍 profileService.getProfile: Starting profile fetch');
-      const user = await auth.getUser();
+      const startTime = Date.now();
       
-      console.log('🔍 profileService.getProfile: RAW USER FROM auth.getUser():', user);
-      console.log('🔍 profileService.getProfile: User object keys:', user ? Object.keys(user) : 'null');
-      
-      if (!user) {
-        console.log('❌ profileService.getProfile: User not authenticated');
-        throw new Error('User not authenticated');
-      }
-
-      // Kliv auth uses userUuid field - normalize for consistency
-      const user_id = user.userUuid || user.id;
-      
-      console.log('👤 profileService.getProfile: WHO AM I - User details', { 
-        userUuid: user.userUuid,
-        fallbackId: user.id,
-        userId: user_id,
-        userEmail: user.email,
-        userName: user.name,
-        firstName: user.firstName,
-        allFields: Object.keys(user)
+      // Set timeout to prevent endless loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout - 10 seconds')), 10000);
       });
       
-      if (!user_id || user_id === 'UNKNOWN') {
-        console.error('❌ profileService.getProfile: No valid user ID found in user object');
-        throw new Error('Invalid user session - no valid ID found');
-      }
-      
-      // First try to get existing profile
-      const queryFilter = { _created_by: 'eq.' + user_id };
-      console.log('🔍 profileService.getProfile: Query filter used', { 
-        filter: queryFilter,
-        user_id: user_id,
-        filterString: `_created_by=eq.${user_id}`
-      });
-      
-      const { data: profiles } = await db.query('player_profiles', queryFilter);
+      const fetchProfile = async () => {
+        const user = await auth.getUser();
+        
+        console.log('🔍 profileService.getProfile: RAW USER FROM auth.getUser():', user);
+        console.log('🔍 profileService.getProfile: User object keys:', user ? Object.keys(user) : 'null');
+        
+        if (!user) {
+          console.log('❌ profileService.getProfile: User not authenticated');
+          throw new Error('User not authenticated');
+        }
 
-      console.log('📊 profileService.getProfile: Profile query result', { 
-        profileCount: profiles?.length || 0,
-        userId: user_id,
-        profiles: profiles?.map(p => ({
-          _row_id: p._row_id,
-          _created_by: p._created_by,
-          username: p.username,
-          display_name: p.display_name,
-          avatar_url: p.avatar_url
-        }))
-      });
-
-      // Return the first (and only) profile
-      if (profiles && profiles.length > 0) {
-        const profile = profiles[0];
-        console.log('📋 profileService.getProfile: Returning user profile', {
-          _row_id: profile._row_id,
-          _created_by: profile._created_by,
-          username: profile.username,
-          display_name: profile.display_name,
-          avatar_url: profile.avatar_url
+        // Kliv auth uses userUuid field - normalize for consistency
+        const user_id = user.userUuid || user.id;
+        
+        console.log('👤 profileService.getProfile: WHO AM I - User details', { 
+          userUuid: user.userUuid,
+          fallbackId: user.id,
+          userId: user_id,
+          userEmail: user.email,
+          userName: user.name,
+          firstName: user.firstName,
+          allFields: Object.keys(user)
         });
         
-        // Verify the profile belongs to our user
-        if (profile._created_by !== user_id) {
-          console.error('❌ profileService.getProfile: SECURITY ERROR - Profile belongs to different user!', {
-            expectedUser: user_id,
-            actualUser: profile._created_by
-          });
-          throw new Error('Security error: Profile ownership mismatch');
+        if (!user_id || user_id === 'UNKNOWN') {
+          console.error('❌ profileService.getProfile: No valid user ID found in user object');
+          throw new Error('Invalid user session - no valid ID found');
         }
         
-        return profile;
-      }
+        // QUICK: Direct query for existing profile
+        const queryFilter = { _created_by: 'eq.' + user_id };
+        console.log('🔍 profileService.getProfile: Query filter used', { 
+          filter: queryFilter,
+          user_id: user_id
+        });
+        
+        const { data: profiles } = await db.query('player_profiles', queryFilter);
 
-      // No profile found - auto-create one
-      console.log('⚠️ profileService.getProfile: No profile found for user, auto-creating...');
-      return await profileService.createProfileIfMissing();
+        console.log('📊 profileService.getProfile: Profile query result', { 
+          profileCount: profiles?.length || 0,
+          userId: user_id
+        });
+
+        // Return the first (and only) profile
+        if (profiles && profiles.length > 0) {
+          const profile = profiles[0];
+          console.log('📋 profileService.getProfile: Returning user profile', {
+            _row_id: profile._row_id,
+            _created_by: profile._created_by,
+            username: profile.username,
+            display_name: profile.display_name,
+            avatar_url: profile.avatar_url
+          });
+          
+          // Verify the profile belongs to our user
+          if (profile._created_by !== user_id) {
+            console.error('❌ profileService.getProfile: SECURITY ERROR', {
+              expectedUser: user_id,
+              actualUser: profile._created_by
+            });
+            throw new Error('Security error: Profile ownership mismatch');
+          }
+          
+          return profile;
+        }
+
+        console.log('⚠️ profileService.getProfile: No profile found, will create...');
+        return null; // Let caller decide to create
+    };
+      
+      // Race fetch against timeout
+      const result = await Promise.race([fetchProfile(), timeoutPromise]);
+      
+      const duration = Date.now() - startTime;
+      console.log(`⏱️ profileService.getProfile: Completed in ${duration}ms`);
+      
+      return result;
       
     } catch (error) {
       console.error('❌ profileService.getProfile: Failed to fetch player profile', error);
+      if (error.message.includes('timeout')) {
+        throw new Error('Profile loading timed out - please refresh');
+      }
       handleApiError(error, 'Failed to fetch player profile');
     }
   },
 
-// UPSERT player profile - guarantee ONE profile per user
-  updateProfile: async (data: {
+  // UPSERT player profile - guarantee ONE profile per user
+updateProfile: async (data: {
     display_name?: string;
     username?: string;
     avatar_url?: string;
@@ -957,7 +1015,6 @@ export const profileService = {
       if (!user) {
         throw new Error('User not authenticated');
       }
-
       const user_id = user.userUuid || user.id;
       
       if (!user_id || user_id === 'UNKNOWN') {

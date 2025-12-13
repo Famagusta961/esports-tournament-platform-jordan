@@ -76,42 +76,64 @@ useEffect(() => {
     console.log('🔐 AuthContext: Initializing...');
     refreshUser();
     
-    // Set up more frequent auth state listener for immediate updates
+    // Set up ultra-responsive auth state listener
     let lastAuthCheck = 0;
+    let lastKnownUserId = null;
+    
     const checkAuthState = async () => {
       try {
         const now = Date.now();
-        // Throttle to every 100ms for near-instant updates
-        if (now - lastAuthCheck < 100) return;
+        // Very frequent checking for immediate updates (50ms)
+        if (now - lastAuthCheck < 50) return;
         lastAuthCheck = now;
         
         const currentUser = await auth.getUser();
         const user_id = currentUser?.userUuid || currentUser?.id;
-        const currentUserId = user?.userUuid || user?.id;
         
-        // Only update if the auth state actually changed
-        if (user_id !== currentUserId || 
-            currentUser?.email !== user?.email) {
-          console.log('🔐 AuthContext: Auth state changed detected', {
-            from: { id: currentUserId, email: user?.email },
-            to: { id: user_id, email: currentUser?.email }
+        // Check if user ID actually changed
+        if (user_id !== lastKnownUserId) {
+          console.log('🔐 AuthContext: USER STATE CHANGED', {
+            from: lastKnownUserId,
+            to: user_id,
+            email: currentUser?.email
           });
-          refreshUser();
+          
+          lastKnownUserId = user_id;
+          
+          // Force immediate state update
+          if (user_id) {
+            // Normalized user object for consistency
+            const normalizedUser = currentUser ? {
+              ...currentUser,
+              id: user_id
+            } : null;
+            
+            setUser(normalizedUser);
+            console.log('✅ AuthContext: User state updated immediately');
+          } else {
+            console.log('🔐 AuthContext: User logged out');
+            setUser(null);
+          }
+          
+          setLoading(false);
         }
       } catch (error) {
-        // User logged out
-        if (error.message?.includes('User not authenticated') && user) {
-          console.log('🔐 AuthContext: User logged out detected');
+        // Check if this is a logout (not authenticated)
+        if (error.message?.includes('User not authenticated') && lastKnownUserId !== null) {
+          console.log('🔐 AuthContext: User session ended');
+          lastKnownUserId = null;
           setUser(null);
+          setLoading(false);
         }
       }
     };
     
-    // Check auth state every 100ms for near-instant UI updates
-    const interval = setInterval(checkAuthState, 100);
+    // Very frequent polling for immediate UI updates
+    const interval = setInterval(checkAuthState, 50);
     
+    // Cleanup
     return () => clearInterval(interval);
-  }, [user]);
+  }, []);
 
   const value: AuthContextType = {
     user,

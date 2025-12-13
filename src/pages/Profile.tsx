@@ -310,15 +310,35 @@ const Profile = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await auth.signOut();
-    toast({
-      title: "Logged out",
-      description: "You have been signed out successfully.",
-    });
-    navigate('/');
+const handleLogout = async () => {
+    console.log('🚪 Profile page: Logout button clicked');
+    
+    try {
+      // Clear auth session
+      await auth.signOut();
+      console.log('✅ Profile page: Auth signOut completed');
+      
+      // Show toast
+      toast({
+        title: "Logged out",
+        description: "You have been signed out successfully.",
+      });
+      
+      // Force refresh to clear all state
+      setTimeout(() => {
+        console.log('🔄 Profile page: Redirecting to login');
+        window.location.href = '/login';
+      }, 500);
+      
+    } catch (error) {
+      console.error('❌ Profile page: Logout failed', error);
+      toast({
+        title: "Logout Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
-
   const handleChangePassword = () => {
     console.log('🔐 Change Password button clicked - opening modal');
     setChangePasswordModalOpen(true);

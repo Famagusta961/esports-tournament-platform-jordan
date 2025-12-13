@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogIn, Trophy, Gamepad2, Users, Wallet, Shield, Home, Upload } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, User, LogIn, LogOut, Trophy, Gamepad2, Users, Wallet, Shield, Home, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
 import { scrollToTop } from '@/lib/scroll-utils';
@@ -13,7 +14,9 @@ const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, setUser } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -69,6 +72,42 @@ const Navbar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const handleLogout = async () => {
+    console.log('🚪 Navbar: Logout button clicked');
+    
+    try {
+      // Clear auth session
+      await auth.signOut();
+      console.log('✅ Navbar: Auth signOut completed');
+      
+      // Clear auth context state immediately
+      setUser(null);
+      
+      // Show toast
+      toast({
+        title: "Logged out",
+        description: "You have been signed out successfully.",
+      });
+      
+      // Close mobile menu if open
+      setIsOpen(false);
+      
+      // Force refresh to clear all state
+      setTimeout(() => {
+        console.log('🔄 Navbar: Redirecting to home');
+        window.location.href = '/';
+      }, 500);
+      
+    } catch (error) {
+      console.error('❌ Navbar: Logout failed', error);
+      toast({
+        title: "Logout Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       scrolled ? 'bg-background/95 backdrop-blur-lg border-b border-border' : 'bg-transparent'
@@ -81,7 +120,7 @@ const Navbar = () => {
             onClick={onNavClick('/')}
             className="flex items-center group"
           >
-<div className="relative">
+            <div className="relative">
               <div className="flex items-center space-x-2">
                 <img 
                   src="/arenajo-logo-square.png" 
@@ -161,6 +200,15 @@ const Navbar = () => {
                     {user.firstName || user.email?.substring(0, user.email.indexOf('@')) || 'Profile'}
                   </Button>
                 </Link>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="font-gaming text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
               </>
             ) : (
               <>
@@ -245,6 +293,17 @@ const Navbar = () => {
                       {user.firstName || user.email?.substring(0, user.email.indexOf('@')) || 'Profile'}
                     </Button>
                   </Link>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start font-gaming text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-5 h-5 mr-3" />
+                    Logout
+                  </Button>
                 </>
               ) : (
                 <>
