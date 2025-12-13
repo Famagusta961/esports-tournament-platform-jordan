@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, ImageIcon } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ImageIcon } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 const games = [
   {
@@ -77,6 +78,46 @@ const games = [
 ];
 
 const GameCategories = () => {
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const scrollAmount = 300; // Adjust for card width + gap
+    if (direction === 'left') {
+      container.scrollLeft -= scrollAmount;
+    } else {
+      container.scrollLeft += scrollAmount;
+    }
+  };
+
+  const checkScrollButtons = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    setCanScrollLeft(container.scrollLeft > 0);
+    setCanScrollRight(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
+    );
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    checkScrollButtons();
+    container.addEventListener('scroll', checkScrollButtons);
+    window.addEventListener('resize', checkScrollButtons);
+    
+    return () => {
+      container.removeEventListener('scroll', checkScrollButtons);
+      window.removeEventListener('resize', checkScrollButtons);
+    };
+  }, []);
+
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -99,53 +140,86 @@ const GameCategories = () => {
           </Link>
         </div>
 
-        {/* Games Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {games.map((game, index) => (
-            <Link
-              key={game.id}
-              to={`/tournaments?game=${game.id}`}
-              className="group relative overflow-hidden rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover-lift animate-slide-up"
-              style={{ animationDelay: `${index * 0.1}s` }}
+        {/* Horizontal Scroll Container */}
+        <div className="relative group">
+          {/* Left Arrow */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-background hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Scroll left"
             >
-              {/* Gradient Background */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-10 group-hover:opacity-20 transition-opacity`} />
-              
-              {/* Content */}
-              <div className="relative p-4 sm:p-6 text-center">
-                {/* Game Image */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
-                  {game.image ? (
-                    <img 
-                      src={game.image} 
-                      alt={game.name}
-                      className="w-full h-full object-cover"
-                      style={{ width: '100%', height: '100%' }}
-                    />
-                  ) : (
-                    <ImageIcon className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
-                  )}
-                </div>
-                
-                {/* Game Name */}
-                <h3 className="font-gaming font-semibold text-sm sm:text-base mb-2 group-hover:text-primary transition-colors">
-                  {game.name}
-                </h3>
-                
-                {/* Stats */}
-                <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground">
-                  <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
-                    {game.activeTournaments} Active
-                  </span>
-                </div>
-              </div>
+              <ChevronLeft className="w-5 h-5 text-foreground" />
+            </button>
+          )}
 
-              {/* Hover Border Glow */}
-              <div className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`}>
-                <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${game.color} blur-xl opacity-20`} />
+          {/* Right Arrow */}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-background hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-5 h-5 text-foreground" />
+            </button>
+          )}
+
+          {/* Games Horizontal Scroll */}
+          <div
+            ref={containerRef}
+            className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth py-2 px-1"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {games.map((game, index) => (
+              <div
+                key={game.id}
+                className="flex-none w-40 sm:w-44 animate-slide-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <Link
+                  to={`/tournaments?game=${game.id}`}
+                  className="group relative overflow-hidden rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover-lift h-full"
+                >
+                  {/* Gradient Background */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-10 group-hover:opacity-20 transition-opacity`} />
+                  
+                  {/* Content */}
+                  <div className="relative p-4 sm:p-6 text-center">
+                    {/* Game Image */}
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
+                      {game.image ? (
+                        <img 
+                          src={game.image} 
+                          alt={game.name}
+                          className="w-full h-full object-cover"
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
+                      )}
+                    </div>
+                    
+                    {/* Game Name */}
+                    <h3 className="font-gaming font-semibold text-sm sm:text-base mb-2 group-hover:text-primary transition-colors truncate">
+                      {game.name}
+                    </h3>
+                    
+                    {/* Stats */}
+                    <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground">
+                      <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        {game.activeTournaments} Active
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Hover Border Glow */}
+                  <div className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`}>
+                    <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${game.color} blur-xl opacity-20`} />
+                  </div>
+                </Link>
               </div>
-            </Link>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Mobile View All Link */}
