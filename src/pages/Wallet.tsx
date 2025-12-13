@@ -1,8 +1,4 @@
-import { FC } from 'react';
-
-const Wallet: FC = () => {
+export default function Wallet() {
   console.count("Wallet render");
   return <h1>Wallet Static Test</h1>;
-};
-
-export default Wallet;
+}
