@@ -6,30 +6,22 @@ import auth from '@/lib/shared/kliv-auth.js';
 import db from '@/lib/shared/kliv-database.js';
 import { scrollToTop } from '@/lib/scroll-utils';
 import React from 'react';
-
-interface UserData {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-}
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<UserData | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const currentUser = await auth.getUser();
-      setUser(currentUser);
-      
-      if (currentUser) {
+    const checkAdmin = async () => {
+      if (user) {
         try {
           // Check if user has admin role
           const { data: users } = await db.query('users', {
-            email: 'eq.' + currentUser.email,
+            email: 'eq.' + user.email,
             role: 'eq.admin'
           });
           setIsAdmin(!!users?.[0]);
@@ -41,8 +33,8 @@ const Navbar = () => {
         setIsAdmin(false);
       }
     };
-    checkAuth();
-  }, [location]);
+    checkAdmin();
+  }, [user, location]);
 
   useEffect(() => {
     const handleScroll = () => {

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useLayoutEffect } from "react";
 import { scrollToTop } from "./lib/scroll-utils";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/layout/Layout";
 import Index from "./pages/Index";
 import Tournaments from "./pages/Tournaments";
@@ -68,7 +69,8 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
         <ScrollToTop />
         <Layout>
           <Routes>
@@ -106,6 +108,7 @@ const App = () => (
           </Route>
         </Routes>
       </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -6,16 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/layout/Layout';
+import { useAuth } from '@/contexts/AuthContext';
 import auth from '@/lib/shared/kliv-auth.js';
 import { profileService, debugProfileService } from '@/lib/api';
 import EditProfileModal from '@/components/profile/EditProfileModal';
-
-interface UserData {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  emailVerified?: boolean;
-}
 
 const mockStats = {
   totalMatches: 156,
@@ -73,7 +67,7 @@ interface PlayerProfile {
 }
 
 const Profile = () => {
-  const [user, setUser] = useState<UserData | null>(null);
+  const { user: authUser, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -91,27 +85,38 @@ const Profile = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      // Wait for auth to be ready
+      if (authLoading) {
+        console.log('🔄 Profile page: Auth still loading...');
+        return;
+      }
+
       try {
         console.log('🔄 Profile page: Starting data load');
-        const currentUser = await auth.getUser();
-        if (!currentUser) {
-          console.log('❌ Profile page: User not authenticated, redirecting to login');
+        
+        // CRITICAL: Check if user is authenticated with a valid ID
+        if (!authUser || !authUser.id) {
+          console.log('❌ Profile page: User not authenticated or missing ID, redirecting to login', { authUser });
           navigate('/login');
           return;
         }
-        console.log('👤 Profile page: User authenticated', { userId: currentUser.id });
-        setUser(currentUser);
+        
+        console.log('👤 Profile page: User authenticated', { 
+          userId: authUser.id, 
+          email: authUser.email,
+          firstName: authUser.firstName 
+        });
 
         // Load player profile (ONE profile per user)
-        console.log('🔍 Profile page: Loading player profile');
+        console.log('🔍 Profile page: Loading player profile for user', authUser.id);
         const playerProfile = await profileService.getProfile();
         console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
         setProfile(playerProfile);
 
         // Update debug info
-        if (playerProfile && currentUser) {
+        if (playerProfile && authUser) {
           const debug = {
-            userId: currentUser.id,
+            userId: authUser.id,
             profileRowId: playerProfile._row_id,
             profileCreatedBy: playerProfile._created_by,
             profileDisplayName: playerProfile.display_name,
@@ -128,8 +133,11 @@ const Profile = () => {
         setLoading(false);
       }
     };
-    loadData();
-  }, [navigate]);
+    
+    if (!authLoading) {
+      loadData();
+    }
+  }, [authLoading, authUser, navigate]);
 
   const handleEditProfile = () => {
     console.log('✏️ Profile page: Opening edit profile modal');
@@ -138,9 +146,21 @@ const Profile = () => {
 
   const handleProfileUpdate = async () => {
     console.log('🔄 Profile page: Handling profile update callback');
+    
+    // CRITICAL: Verify we have a valid user before proceeding
+    if (!authUser || !authUser.id) {
+      console.error('❌ Profile page: No authenticated user for update');
+      toast({
+        title: "Authentication Error",
+        description: "Please log in again to update your profile.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Reload profile data after update (ONE profile per user)
-      console.log('🔍 Profile page: Reloading profile data after save');
+      console.log('🔍 Profile page: Reloading profile data after save for user', authUser.id);
       const playerProfile = await profileService.getProfile();
       console.log('📊 Profile page: Updated profile loaded', { 
         profile: playerProfile,
@@ -151,22 +171,33 @@ const Profile = () => {
       });
       
       if (playerProfile) {
-        // Update debug info first
-        const currentUser = await auth.getUser();
-        if (currentUser) {
-          const debug = {
-            userId: currentUser.id,
-            profileRowId: playerProfile._row_id,
-            profileCreatedBy: playerProfile._created_by,
-            profileDisplayName: playerProfile.display_name,
-            profileAvatarUrl: playerProfile.avatar_url
-          };
-          console.log('🔍 UPDATED DEBUG INFO:', debug);
-          setDebugInfo(debug);
+        // HARD VERIFICATION: Check that returned profile matches our user
+        if (playerProfile._created_by !== authUser.id) {
+          console.error('❌ Profile page: Profile user mismatch!', {
+            expectedUser: authUser.id,
+            profileUser: playerProfile._created_by
+          });
+          toast({
+            title: "Security Error",
+            description: "Profile verification failed. Please contact support.",
+            variant: "destructive",
+          });
+          return;
         }
         
+        // Update debug info first
+        const debug = {
+          userId: authUser.id,
+          profileRowId: playerProfile._row_id,
+          profileCreatedBy: playerProfile._created_by,
+          profileDisplayName: playerProfile.display_name,
+          profileAvatarUrl: playerProfile.avatar_url
+        };
+        console.log('🔍 UPDATED DEBUG INFO:', debug);
+        setDebugInfo(debug);
+        
         // Update state and verify the change
-        console.log('📋 Profile page: Setting profile state with updated data');
+        console.log('📋 Profile page: Setting profile state with verified data');
         setProfile(playerProfile);
         
         console.log('✅ Profile page: Profile state updated successfully');
@@ -177,7 +208,7 @@ const Profile = () => {
         // Show success confirmation
         toast({
           title: "Profile updated successfully",
-          description: "Your changes have been saved and are now visible.",
+          description: "Your changes have been saved and verified.",
         });
       } else {
         console.log('⚠️ Profile page: No profile returned after update');
@@ -262,11 +293,23 @@ const Profile = () => {
     // TODO: Implement password change modal or redirect
   };
 
+  // Show loading state while auth is initializing
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground font-gaming">Initializing...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show loading state while profile data is loading
   if (loading) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-pulse text-muted-foreground font-gaming">Loading...</div>
+          <div className="animate-pulse text-muted-foreground font-gaming">Loading profile...</div>
         </div>
       </Layout>
     );
@@ -297,7 +340,7 @@ const Profile = () => {
                     />
                   ) : (
                     <span className="font-display font-bold text-4xl sm:text-5xl text-white">
-                      {profile?.display_name?.[0] || user?.email?.[0]?.toUpperCase() || 'P'}
+                      {profile?.display_name?.[0] || authUser?.email?.[0]?.toUpperCase() || 'P'}
                     </span>
                   )}
                 </div>
@@ -335,7 +378,7 @@ const Profile = () => {
                   )}
                   <p className="text-muted-foreground font-gaming flex items-center space-x-2">
                     <Mail className="w-4 h-4" />
-                    <span>{user?.email}</span>
+                    <span>{authUser?.email}</span>
                   </p>
                   {profile?.bio && (
                     <p className="text-muted-foreground font-gaming mt-2 text-sm">
@@ -347,7 +390,7 @@ const Profile = () => {
                       <Star className="w-3 h-3 mr-1" />
                       {profile?.current_rank || mockStats.currentRank}
                     </Badge>
-                    {user?.emailVerified && (
+                    {authUser?.emailVerified && (
                       <Badge variant="secondary">
                         <Shield className="w-3 h-3 mr-1" />
                         Verified
