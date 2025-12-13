@@ -83,35 +83,28 @@ const GameCategories = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const scroll = (direction: 'left' | 'right') => {
+  const scrollToIndex = (index: number) => {
     const container = containerRef.current;
     if (!container) return;
     
-    // Calculate center-aligned scroll position for precise centering
-    const isMobile = window.innerWidth < 640;
-    const cardWidth = isMobile ? 288 : 224; // Mobile: w-72, Desktop: w-56
-    const gap = 24; // gap-6
-    const containerWidth = container.clientWidth;
-    
-    let newIndex;
-    if (direction === 'left') {
-      newIndex = Math.max(0, currentIndex - 1);
-    } else {
-      newIndex = Math.min(games.length - 1, currentIndex + 1);
+    const cards = container.querySelectorAll('[data-game-card]');
+    if (cards[index]) {
+      (cards[index] as HTMLElement).scrollIntoView({ 
+        inline: 'center',
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+      console.log('Scrolling to index:', index);
     }
+  };
+
+  const scroll = (direction: 'left' | 'right') => {
+    const newIndex = direction === 'left' 
+      ? Math.max(0, currentIndex - 1)
+      : Math.min(games.length - 1, currentIndex + 1);
     
     setCurrentIndex(newIndex);
-    
-    // Calculate exact center scroll position
-    const targetScrollLeft = newIndex * (cardWidth + gap) - (containerWidth - cardWidth) / 2;
-    
-    // Use scrollTo for exact positioning
-    container.scrollTo({
-      left: targetScrollLeft,
-      behavior: 'smooth'
-    });
-    
-    console.log('Scrolling to index:', newIndex, 'position:', targetScrollLeft);
+    scrollToIndex(newIndex);
   };
 
   const checkScrollButtons = () => {
@@ -120,45 +113,17 @@ const GameCategories = () => {
   };
 
   useEffect(() => {
-    checkScrollButtons();
-  }, [currentIndex]);
+    // Initialize with first game centered
+    const timer = setTimeout(() => {
+      scrollToIndex(0);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    
-    // Initialize with first game centered (only run once)
-    const initializePosition = () => {
-      const isMobile = window.innerWidth < 640;
-      const cardWidth = isMobile ? 288 : 224;
-      const gap = 24;
-      const containerWidth = container.clientWidth;
-      const targetScrollLeft = 0 * (cardWidth + gap) - (containerWidth - cardWidth) / 2;
-      
-      // Use scrollTo for initial positioning
-      container.scrollTo({
-        left: targetScrollLeft,
-        behavior: 'smooth'
-      });
-      
-      console.log('Initial position:', targetScrollLeft);
-    };
-    
-    // Small delay to ensure container is rendered
-    setTimeout(initializePosition, 100);
-    
-    container.addEventListener('scroll', checkScrollButtons);
-    
-    // Update checkScrollButtons when currentIndex changes
-    const updateCheck = () => checkScrollButtons();
-    
-    window.addEventListener('resize', updateCheck);
-    
-    return () => {
-      container.removeEventListener('scroll', checkScrollButtons);
-      window.removeEventListener('resize', updateCheck);
-    };
-  }, []);
+    checkScrollButtons();
+  }, [currentIndex]);
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
@@ -220,6 +185,7 @@ const GameCategories = () => {
             {games.map((game, index) => (
               <div
                 key={game.id}
+                data-game-card
                 className="flex-none w-72 sm:w-56 animate-slide-up snap-center"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
