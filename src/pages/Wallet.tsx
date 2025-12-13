@@ -215,7 +215,7 @@ export default function Wallet() {
               {loading ? (
                 <div className="h-8 w-32 bg-gray-200 animate-pulse rounded mt-1"></div>
               ) : (
-                <p className="text-3xl font-bold text-gray-900 mt-1">${balance.current_balance.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">JD {balance.current_balance.toFixed(2)}</p>
               )}
             </div>
             <div className="text-green-600">
@@ -234,7 +234,7 @@ export default function Wallet() {
             {loading ? (
               <div className="h-7 w-24 bg-gray-200 animate-pulse rounded mt-1"></div>
             ) : (
-              <div className="text-2xl font-semibold text-gray-900">${balance.total_won.toFixed(2)}</div>
+              <div className="text-2xl font-semibold text-gray-900">JD {balance.total_won.toFixed(2)}</div>
             )}
           </Card>
           <Card className="p-4">
@@ -242,7 +242,7 @@ export default function Wallet() {
             {loading ? (
               <div className="h-7 w-24 bg-gray-200 animate-pulse rounded mt-1"></div>
             ) : (
-              <div className="text-2xl font-semibold text-yellow-600">${balance.pending_withdrawals.toFixed(2)}</div>
+              <div className="text-2xl font-semibold text-yellow-600">JD {balance.pending_withdrawals.toFixed(2)}</div>
             )}
           </Card>
           <Card className="p-4">
@@ -250,7 +250,7 @@ export default function Wallet() {
             {loading ? (
               <div className="h-7 w-24 bg-gray-200 animate-pulse rounded mt-1"></div>
             ) : (
-              <div className="text-2xl font-semibold text-gray-900">${balance.total_withdrawn.toFixed(2)}</div>
+              <div className="text-2xl font-semibold text-gray-900">JD {balance.total_withdrawn.toFixed(2)}</div>
             )}
           </Card>
         </div>
@@ -329,7 +329,7 @@ export default function Wallet() {
                       <div className={`font-semibold ${
                         transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                        {transaction.amount > 0 ? '+' : ''}JD {Math.abs(transaction.amount).toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -381,7 +381,7 @@ export default function Wallet() {
                         </div>
                       </div>
                       <div className="font-semibold text-green-600">
-                        +${transaction.amount.toFixed(2)}
+                        +JD {transaction.amount.toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -433,7 +433,7 @@ export default function Wallet() {
                         </div>
                       </div>
                       <div className="font-semibold text-red-600">
-                        -${transaction.amount.toFixed(2)}
+                        -JD {transaction.amount.toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -485,7 +485,7 @@ export default function Wallet() {
                         </div>
                       </div>
                       <div className="font-semibold text-green-600">
-                        +${transaction.amount.toFixed(2)}
+                        +JD {transaction.amount.toFixed(2)}
                       </div>
                     </div>
                   ))}
