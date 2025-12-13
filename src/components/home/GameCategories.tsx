@@ -89,12 +89,18 @@ const GameCategories = () => {
     
     const cards = container.querySelectorAll('[data-game-card]');
     if (cards[index]) {
-      (cards[index] as HTMLElement).scrollIntoView({ 
-        inline: 'center',
-        behavior: 'smooth',
-        block: 'nearest'
+      // Calculate exact scroll position to center the card within its container only
+      const card = cards[index] as HTMLElement;
+      const cardWidth = card.offsetWidth + 32; // card width + gap
+      const containerWidth = container.offsetWidth;
+      const targetScrollLeft = (card.offsetLeft - (containerWidth / 2) + (card.offsetWidth / 2)) - 16; // -16 for container padding
+      
+      container.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: 'smooth'
       });
-      console.log('Scrolling to index:', index);
+      
+      console.log('Carousel scrolling to index:', index, 'container scrollLeft:', targetScrollLeft);
     }
   };
 
@@ -113,9 +119,14 @@ const GameCategories = () => {
   };
 
   useEffect(() => {
-    // Initialize with first game centered
+    // Initialize with first game centered - BUT only scroll the carousel, not the page
     const timer = setTimeout(() => {
-      scrollToIndex(0);
+      const container = containerRef.current;
+      if (container) {
+        // Use direct container scroll instead of scrollIntoView to avoid page scroll
+        container.scrollLeft = 0;
+        console.log('GameCategories initialized - carousel scrolled to start, not page');
+      }
     }, 100);
     
     return () => clearTimeout(timer);
