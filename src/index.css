@@ -208,13 +208,9 @@
   z-index: 1;
 }
 
-/* Prevent any fixed/absolute positioning issues */
-.wallet-page * {
-  position: static;
-}
-
+/* Remove position overrides - let Tailwind classes work naturally */
 .wallet-page .relative,
 .wallet-page .absolute,
 .wallet-page .fixed {
-  position: relative !important;
+  /* Remove position override - use Tailwind classes as intended */
 }
