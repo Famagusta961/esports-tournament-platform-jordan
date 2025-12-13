@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useLayoutEffect } from "react";
 import { scrollToTop } from "./lib/scroll-utils";
+import Layout from "@/components/layout/Layout";
 import Index from "./pages/Index";
 import Tournaments from "./pages/Tournaments";
 import TournamentDetails from "./pages/TournamentDetails";
@@ -59,23 +60,30 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ScrollToTop />
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/tournaments" element={<Tournaments />} />
+            <Route path="/tournaments/:id" element={<TournamentDetails />} />
+              <Route path="/tournaments/:id/register" element={<TournamentRegistration />} />
+              <Route path="/matches/:id/submit" element={<MatchSubmission />} />
+            <Route path="/games" element={<Games />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/wallet" element={<Wallet />} />
+            <Route path="/teams" element={<TeamManagement />} />
+            <Route path="/teams/:id" element={<TeamPage />} />
+            <Route path="/image-test" element={<ImageTestPage />} />
+            
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
+        
+        {/* Admin Routes - Separate Layout */}
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/tournaments" element={<Tournaments />} />
-          <Route path="/tournaments/:id" element={<TournamentDetails />} />
-            <Route path="/tournaments/:id/register" element={<TournamentRegistration />} />
-            <Route path="/matches/:id/submit" element={<MatchSubmission />} />
-          <Route path="/games" element={<Games />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/wallet" element={<Wallet />} />
-          <Route path="/teams" element={<TeamManagement />} />
-          <Route path="/teams/:id" element={<TeamPage />} />
-          <Route path="/image-test" element={<ImageTestPage />} />
-          
-          {/* Admin Routes - Protected Access */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminIndex />} />
             <Route path="tournaments" element={<AdminTournaments />} />
@@ -86,9 +94,6 @@ const App = () => (
             <Route path="settings" element={<AdminSettings />} />
             <Route path="game-images" element={<GameImageManager />} />
           </Route>
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

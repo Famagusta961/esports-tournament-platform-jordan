@@ -3,7 +3,6 @@ import { Trophy, Medal, Star, TrendingUp, Users, ChevronUp, ChevronDown, Minus }
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Layout from '@/components/layout/Layout';
 
 const playerLeaderboard = [
   { rank: 1, change: 'up', name: 'ShadowHunter', avatar: 'S', points: 2850, wins: 156, matches: 200, winRate: 78, earnings: '3,500 JD' },
@@ -44,9 +43,8 @@ const Leaderboard = () => {
   const [timeFilter, setTimeFilter] = useState('all');
 
   return (
-    <Layout>
-      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="font-display text-4xl sm:text-5xl font-bold mb-4">
@@ -237,7 +235,6 @@ const Leaderboard = () => {
           </Tabs>
         </div>
       </div>
-    </Layout>
   );
 };
 

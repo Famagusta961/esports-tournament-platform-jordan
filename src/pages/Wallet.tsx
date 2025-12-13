@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/layout/Layout';
 import { walletService } from '@/lib/api';
 import auth from '@/lib/shared/kliv-auth.js';
 
@@ -47,6 +46,14 @@ const Wallet = () => {
           navigate('/login');
           return;
         }
+        
+        // Only proceed with wallet operations if user UUID is available
+        if (!currentUser.uuid) {
+          console.error('User UUID not available, skipping wallet data fetch');
+          setLoading(false);
+          return;
+        }
+        
         setUser(currentUser);
 
         // Load wallet balance
@@ -110,18 +117,15 @@ const Wallet = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center relative z-10">
-          <div className="animate-pulse text-muted-foreground font-gaming">Loading wallet...</div>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-muted-foreground font-gaming">Loading wallet...</div>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="py-8 px-4 sm:px-6 lg:px-8 relative bg-background overflow-x-hidden" style={{ isolation: 'isolate' }}>
-        <div className="max-w-6xl mx-auto relative z-10">
+    <div className="py-8 px-4 sm:px-6 lg:px-8 relative bg-background overflow-x-hidden" style={{ isolation: 'isolate' }}>
+      <div className="max-w-6xl mx-auto relative z-10">
           {/* Header */}
           <div className="mb-8 relative z-10">
             <h1 className="font-display text-3xl font-bold mb-2">My Wallet</h1>
@@ -279,8 +283,7 @@ const Wallet = () => {
             </Tabs>
           </Card>
         </div>
-      </div>
-    </Layout>
+    </div>
   );
 };
 

@@ -162,7 +162,7 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.password)}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 bg-muted/50 border-border font-gaming"
                   required
                 />

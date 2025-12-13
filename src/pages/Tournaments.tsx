@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useToast } from '@/hooks/use-toast';
 import { UnregisterConfirmDialog } from '@/components/ui/unregister-confirm-dialog';
@@ -295,9 +294,8 @@ useEffect(() => {
   });
 
   return (
-    <Layout>
-      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="font-display text-4xl sm:text-5xl font-bold mb-4">
               <span className="text-gradient">Tournaments</span>
@@ -502,7 +500,6 @@ useEffect(() => {
           )}
         </div>
       </div>
-    </Layout>
   );
 };
 

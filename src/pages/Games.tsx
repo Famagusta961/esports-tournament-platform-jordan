@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Trophy, Users, Gamepad2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import Layout from '@/components/layout/Layout';
 
 const games = [
   {
@@ -96,9 +95,8 @@ const games = [
 
 const Games = () => {
   return (
-    <Layout>
-      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="font-display text-4xl sm:text-5xl font-bold mb-4">
@@ -206,7 +204,6 @@ const Games = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

@@ -1,11 +1,10 @@
-import Layout from '@/components/layout/Layout';
-import HeroSection from '@/components/home/HeroSection';
-import GameCategories from '@/components/home/GameCategories';
-import FeaturedTournaments from '@/components/home/FeaturedTournaments';
-import HowItWorks from '@/components/home/HowItWorks';
-import CTASection from '@/components/home/CTASection';
-import { useLayoutEffect } from 'react';
-import { scrollToTop } from '@/lib/scroll-utils';
+import { useLayoutEffect } from "react";
+import { scrollToTop } from "@/lib/scroll-utils";
+import HeroSection from "@/components/home/HeroSection";
+import GameCategories from "@/components/home/GameCategories";
+import FeaturedTournaments from "@/components/home/FeaturedTournaments";
+import HowItWorks from "@/components/home/HowItWorks";
+import CTASection from "@/components/home/CTASection";
 
 const Index = () => {
   // Force Home to top after render - multiple safety resets
@@ -35,13 +34,13 @@ const Index = () => {
   }, []);
 
   return (
-    <Layout>
+    <>
       <HeroSection />
       <GameCategories />
       <FeaturedTournaments />
       <HowItWorks />
       <CTASection />
-    </Layout>
+    </>
   );
 };
 
