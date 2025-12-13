@@ -120,8 +120,8 @@ const Wallet = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <h1 className="font-display text-3xl font-bold mb-2">My Wallet</h1>
@@ -146,20 +146,20 @@ const Wallet = () => {
               </div>
               
               <div className="flex items-baseline space-x-2">
-                <span className="font-display text-4xl font-bold">
+                <span className="font-display text-3xl sm:text-4xl font-bold">
                   {showBalance ? `${balance.toFixed(2)}` : '••••'}
                 </span>
-                <span className="text-xl text-muted-foreground font-gaming">
+                <span className="text-lg sm:text-xl text-muted-foreground font-gaming">
                   {showBalance ? 'JOD' : ''}
                 </span>
               </div>
 
               <div className="flex flex-wrap gap-3 mt-6">
-                <Button className="font-gaming">
+                <Button className="font-gaming text-sm sm:text-base px-4 sm:px-6">
                   <Plus className="w-4 h-4 mr-2" />
                   Deposit Funds
                 </Button>
-                <Button variant="outline" className="font-gaming">
+                <Button variant="outline" className="font-gaming text-sm sm:text-base px-4 sm:px-6">
                   <Download className="w-4 h-4 mr-2" />
                   Withdraw
                 </Button>
@@ -168,7 +168,7 @@ const Wallet = () => {
           </Card>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <Card className="bg-card border-border p-4">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
@@ -207,17 +207,17 @@ const Wallet = () => {
           </div>
 
           {/* Transactions */}
-          <Card className="bg-card border-border">
-            <div className="p-6 border-b border-border">
-              <h3 className="font-display text-xl font-semibold">Transaction History</h3>
+          <Card className="bg-card border-border overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-border">
+              <h3 className="font-display text-lg sm:text-xl font-semibold">Transaction History</h3>
             </div>
             
-            <Tabs defaultValue="all" className="p-6">
-              <TabsList className="bg-muted p-1 mb-6">
-                <TabsTrigger value="all" className="font-gaming">All</TabsTrigger>
-                <TabsTrigger value="deposits" className="font-gaming">Deposits</TabsTrigger>
-                <TabsTrigger value="withdrawals" className="font-gaming">Withdrawals</TabsTrigger>
-                <TabsTrigger value="tournaments" className="font-gaming">Tournaments</TabsTrigger>
+            <Tabs defaultValue="all" className="p-4 sm:p-6">
+              <TabsList className="bg-muted p-1 mb-6 w-full overflow-x-auto flex flex-nowrap">
+                <TabsTrigger value="all" className="font-gaming flex-shrink-0">All</TabsTrigger>
+                <TabsTrigger value="deposits" className="font-gaming flex-shrink-0">Deposits</TabsTrigger>
+                <TabsTrigger value="withdrawals" className="font-gaming flex-shrink-0">Withdrawals</TabsTrigger>
+                <TabsTrigger value="tournaments" className="font-gaming flex-shrink-0">Tournaments</TabsTrigger>
               </TabsList>
 
               <TabsContent value="all" className="space-y-3">
@@ -227,7 +227,7 @@ const Wallet = () => {
                   </div>
                 ) : (
                   transactions.map((transaction) => (
-                    <div key={transaction._row_id} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div key={transaction._row_id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors gap-3">
                       <div className="flex items-center space-x-4">
                         <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
                           {getTransactionIcon(transaction.type)}
@@ -242,7 +242,7 @@ const Wallet = () => {
                         </div>
                       </div>
                       
-                      <div className="text-right">
+                      <div className="sm:text-right">
                         <p className={`font-display font-semibold ${getTransactionColor(transaction.type)}`}>
                           {transaction.type === 'deposit' || transaction.type === 'tournament_prize' ? '+' : '-'}
                           {Math.abs(transaction.amount).toFixed(2)} JOD
