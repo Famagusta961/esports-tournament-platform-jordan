@@ -72,10 +72,51 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     console.log('🔐 AuthContext: Initializing...');
     refreshUser();
-  }, []);
+    
+    // Set up auth state listener
+    const setupAuthListener = async () => {
+      try {
+        // In Kliv, we need to poll for auth state changes
+        const checkAuthState = async () => {
+          try {
+            const currentUser = await auth.getUser();
+            
+            // Only update if the auth state actually changed
+            if (currentUser?.userUuid !== user?.userUuid || 
+                currentUser?.id !== user?.id ||
+                currentUser?.email !== user?.email) {
+              console.log('🔐 AuthContext: Auth state changed detected, refreshing...');
+              refreshUser();
+            }
+          } catch (error) {
+            // User logged out
+            if (error.message.includes('User not authenticated') && user) {
+              console.log('🔐 AuthContext: User logged out detected');
+              setUser(null);
+            }
+          }
+        };
+        
+        // Check auth state every 2 seconds to catch sign in/out
+        const interval = setInterval(checkAuthState, 2000);
+        
+        // Cleanup listener
+        return () => clearInterval(interval);
+      } catch (error) {
+        console.error('🔐 AuthContext: Failed to set up auth listener', error);
+      }
+    };
+    
+    const cleanup = setupAuthListener();
+    return () => {
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
+}, []);
 
   const value: AuthContextType = {
     user,

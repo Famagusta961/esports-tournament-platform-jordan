@@ -120,6 +120,15 @@ const Profile = () => {
           try {
             playerProfile = await profileService.createProfileIfMissing();
             console.log('✅ Profile page: Default profile created', { profile: playerProfile });
+            
+            // If still null, try one more time with explicit wait
+            if (!playerProfile) {
+              console.log('🔍 Profile page: Profile still null, retrying fetch...');
+              await new Promise(resolve => setTimeout(resolve, 500));
+              playerProfile = await profileService.getProfile();
+              console.log('📊 Profile page: Profile after retry', { profile: playerProfile });
+            }
+            
           } catch (createError) {
             console.error('❌ Profile page: Failed to create default profile', createError);
             // Continue with null profile - user will see "No Profile Found" message

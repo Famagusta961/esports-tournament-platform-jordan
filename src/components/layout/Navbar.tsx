@@ -81,9 +81,21 @@ const Navbar = () => {
             onClick={onNavClick('/')}
             className="flex items-center group"
           >
-            <div className="relative">
+<div className="relative">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                <img 
+                  src="/arenajo-logo-square.png" 
+                  alt="ArenaJo" 
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg"
+                  onError={(e) => {
+                    // Fallback to styled A if logo fails
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center" style={{display: 'none'}}>
                   <span className="font-bold text-white text-lg sm:text-xl">A</span>
                 </div>
                 <span className="font-display font-bold text-xl sm:text-2xl text-foreground">ArenaJo</span>
