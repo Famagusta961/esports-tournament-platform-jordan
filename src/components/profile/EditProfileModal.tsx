@@ -161,13 +161,27 @@ export default function EditProfileModal({ isOpen, onClose, currentProfile, onPr
 
     setUploadingAvatar(true);
     try {
+      console.log('📤 EditProfileModal: Starting avatar upload', { 
+        fileName: file.name, 
+        fileSize: file.size, 
+        fileType: file.type 
+      });
+      
       const result = await content.uploadFile(file, '/content/avatars/');
+      console.log('✅ EditProfileModal: Avatar upload successful', { 
+        uploadResult: result,
+        contentUrl: result.contentUrl 
+      });
+      
       setFormData(prev => ({ ...prev, avatar_url: result.contentUrl }));
       toast({
         title: "Avatar uploaded",
         description: "Your avatar has been updated successfully",
       });
+      
+      console.log('💾 EditProfileModal: Avatar URL saved to form state', { avatar_url: result.contentUrl });
     } catch (error) {
+      console.error('❌ EditProfileModal: Avatar upload failed', error);
       toast({
         title: "Upload failed",
         description: "Failed to upload avatar. Please try again.",
@@ -220,28 +234,45 @@ export default function EditProfileModal({ isOpen, onClose, currentProfile, onPr
     console.log('✅ EditProfileModal: All validation passed, calling profileService.updateProfile');
     setLoading(true);
     try {
-      const updateData = {
+      // Prepare update data with validation
+      const updateData: {
+        display_name: string;
+        username: string;
+        bio: string;
+        country: string;
+        avatar_url?: string;
+      } = {
         display_name: formData.display_name,
         username: formData.username,
         bio: formData.bio,
-        country: formData.country,
-        avatar_url: formData.avatar_url
+        country: formData.country
       };
-      console.log('📤 EditProfileModal: Sending update data', updateData);
+      
+      // Only include avatar_url if it's a valid URL
+      if (formData.avatar_url && formData.avatar_url.trim() !== '') {
+        console.log('🔍 EditProfileModal: Validating avatar URL', { avatar_url: formData.avatar_url });
+        if (formData.avatar_url.startsWith('/content/') || formData.avatar_url.startsWith('http')) {
+          updateData.avatar_url = formData.avatar_url;
+        } else {
+          console.warn('⚠️ EditProfileModal: Invalid avatar URL format, excluding from update', { avatar_url: formData.avatar_url });
+        }
+      }
+      
+      console.log('📤 EditProfileModal: Final update data', updateData);
       
       await profileService.updateProfile(updateData);
       
       console.log('✅ EditProfileModal: profileService.updateProfile succeeded');
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
-      });
       
+      // First refresh the UI, then close modal
       console.log('🔄 EditProfileModal: Calling onProfileUpdate callback');
       onProfileUpdate?.();
       
-      console.log('🚪 EditProfileModal: Closing modal');
-      onClose();
+      // Wait a bit for UI to update before closing
+      setTimeout(() => {
+        console.log('🚪 EditProfileModal: Closing modal after UI refresh');
+        onClose();
+      }, 300);
     } catch (error) {
       console.error('❌ EditProfileModal: Update failed', error);
       const errorMessage = error instanceof Error ? error.message : "Failed to update profile. Please try again.";

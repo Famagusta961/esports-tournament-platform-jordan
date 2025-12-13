@@ -93,9 +93,14 @@ const Profile = () => {
         console.log('👤 Profile page: User authenticated', { userId: currentUser.id });
         setUser(currentUser);
 
-        // Load player profile
+        // Get active username first
+        console.log('🔍 Profile page: Getting active username');
+        const activeUsername = await profileService.getActiveUsername();
+        console.log('👤 Profile page: Active username', { activeUsername });
+
+        // Load player profile with active username
         console.log('🔍 Profile page: Loading player profile');
-        const playerProfile = await profileService.getProfile();
+        const playerProfile = await profileService.getProfile(activeUsername || undefined);
         console.log('📊 Profile page: Profile loaded', { profile: playerProfile });
         setProfile(playerProfile);
 
@@ -117,13 +122,43 @@ const Profile = () => {
   const handleProfileUpdate = async () => {
     console.log('🔄 Profile page: Handling profile update callback');
     try {
-      // Reload profile data after update
+      // Small delay to ensure database is updated
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Get active username and reload profile data after update
+      const activeUsername = await profileService.getActiveUsername();
+      console.log('👤 Profile page: Active username for refresh', { activeUsername });
+      
       console.log('🔍 Profile page: Reloading profile data');
-      const playerProfile = await profileService.getProfile();
-      console.log('📊 Profile page: Updated profile loaded', { profile: playerProfile });
+      const playerProfile = await profileService.getProfile(activeUsername || undefined);
+      console.log('📊 Profile page: Updated profile loaded', { 
+        profile: playerProfile,
+        display_name: playerProfile?.display_name,
+        avatar_url: playerProfile?.avatar_url,
+        bio: playerProfile?.bio,
+        country: playerProfile?.country
+      });
+      
+      // Update state and verify the change
       setProfile(playerProfile);
       
+      // Additional verification
+      setTimeout(() => {
+        console.log('🔍 Profile page: Verifying profile state update', {
+          currentProfile: playerProfile,
+          displayName: playerProfile?.display_name,
+          hasAvatar: !!playerProfile?.avatar_url
+        });
+      }, 100);
+      
       console.log('✅ Profile page: Profile state updated successfully');
+      
+      // Show success confirmation
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated and refreshed.",
+      });
+      
     } catch (error) {
       console.error('❌ Profile page: Failed to reload profile after update:', error);
       toast({
@@ -144,6 +179,18 @@ const Profile = () => {
       if (currentUser) {
         const userProfile = await debugProfileService.queryProfileByUserId(currentUser.id);
         console.log('👤 DEBUG: Current user profile', { userProfile });
+        
+        // Also test active username logic
+        const activeUsername = await profileService.getActiveUsername();
+        console.log('👤 DEBUG: Active username', { activeUsername });
+        
+        if (activeUsername) {
+          const specificProfile = await profileService.getProfile(activeUsername);
+          console.log('👤 DEBUG: Specific profile by username', { 
+            username: activeUsername,
+            profile: specificProfile 
+          });
+        }
       }
     } catch (error) {
       console.error('❌ DEBUG: Database test failed', error);

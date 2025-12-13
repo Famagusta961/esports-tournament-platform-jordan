@@ -766,7 +766,7 @@ export const debugProfileService = {
 // Player Profile service using database SDK
 export const profileService = {
   // Get player profile
-  getProfile: async () => {
+  getProfile: async (username?: string) => {
     try {
       console.log('🔍 profileService.getProfile: Starting profile fetch');
       const user = await auth.getUser();
@@ -775,19 +775,108 @@ export const profileService = {
         throw new Error('User not authenticated');
       }
 
-      console.log('👤 profileService.getProfile: User authenticated', { userId: user.id });
+      console.log('👤 profileService.getProfile: User authenticated', { userId: user.id, requestedUsername: username });
+      
+      let queryFilter = { _created_by: 'eq.' + user.id };
+      
+      // If username is specified, add it to the filter
+      if (username) {
+        queryFilter = { 
+          _created_by: 'eq.' + user.id,
+          username: 'eq.' + username
+        };
+      }
+      
+      const { data: profiles } = await db.query('player_profiles', queryFilter);
+
+      console.log('📊 profileService.getProfile: Profile query result', { 
+        profileCount: profiles?.length || 0,
+        profiles: profiles?.map(p => ({
+          _row_id: p._row_id,
+          username: p.username,
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+          bio: p.bio,
+          country: p.country,
+          _updated_at: p._updated_at
+        }))
+      });
+
+      // If profiles found
+      if (profiles && profiles.length > 0) {
+        // If username was specified and we found exact match, return it
+        if (username && profiles.length === 1) {
+          const selectedProfile = profiles[0];
+          console.log('📋 profileService.getProfile: Found exact username match', {
+            selectedProfile: {
+              _row_id: selectedProfile._row_id,
+              username: selectedProfile.username,
+              display_name: selectedProfile.display_name,
+              avatar_url: selectedProfile.avatar_url,
+              _updated_at: selectedProfile._updated_at
+            }
+          });
+          return selectedProfile;
+        }
+        
+        // Otherwise, sort by _updated_at descending (most recent first)
+        const sortedProfiles = profiles.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
+        
+        // Try to prioritize profiles with more complete data (non-empty display_name, etc.)
+        let selectedProfile = sortedProfiles[0];
+        
+        // Check if there's a profile with a more complete profile
+        const profilesWithData = sortedProfiles.filter(p => 
+          p.display_name && p.display_name.trim() !== ''
+        );
+        
+        if (profilesWithData.length > 0) {
+          selectedProfile = profilesWithData[0];
+        }
+        
+        console.log('📋 profileService.getProfile: Selected profile (fallback logic)', {
+          totalProfiles: profiles.length,
+          selectedProfile: {
+            _row_id: selectedProfile._row_id,
+            username: selectedProfile.username,
+            display_name: selectedProfile.display_name,
+            avatar_url: selectedProfile.avatar_url,
+            _updated_at: selectedProfile._updated_at
+          },
+          selectionCriteria: profilesWithData.length > 0 ? 'most recent with data' : 'most recent'
+        });
+        
+        return selectedProfile;
+      }
+
+      console.log('⚠️ profileService.getProfile: No profiles found for user');
+      return null;
+    } catch (error) {
+      console.error('❌ profileService.getProfile: Failed to fetch player profile', error);
+      handleApiError(error, 'Failed to fetch player profile');
+    }
+  },
+
+  // Get the active username for the current user (most recently used)
+  getActiveUsername: async () => {
+    try {
+      const user = await auth.getUser();
+      if (!user) return null;
+
       const { data: profiles } = await db.query('player_profiles', {
         _created_by: 'eq.' + user.id
       });
 
-      console.log('📊 profileService.getProfile: Profile query result', { 
-        profileCount: profiles?.length || 0,
-        profile: profiles?.[0] 
-      });
-      return profiles?.[0] || null;
+      if (profiles && profiles.length > 0) {
+        // Return the username of the most recently updated profile
+        const sortedProfiles = profiles.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
+        return sortedProfiles[0].username || null;
+      }
+
+      return null;
     } catch (error) {
-      console.error('❌ profileService.getProfile: Failed to fetch player profile', error);
-      handleApiError(error, 'Failed to fetch player profile');
+      console.error('❌ profileService.getActiveUsername: Failed', error);
+      return null;
     }
   },
 
@@ -912,17 +1001,40 @@ export const profileService = {
 
       let result;
       if (existingProfiles && existingProfiles.length > 0) {
+        // If multiple profiles exist, update the most recently updated one
+        const sortedProfiles = existingProfiles.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
+        const targetProfile = sortedProfiles[0];
+        
         console.log('🔄 profileService.updateProfile: Updating existing profile', { 
-          profileId: existingProfiles[0]._row_id,
+          totalProfiles: existingProfiles.length,
+          selectedProfile: {
+            _row_id: targetProfile._row_id,
+            username: targetProfile.username,
+            display_name: targetProfile.display_name,
+            _updated_at: targetProfile._updated_at
+          },
           hasUsernameUpdate: profileData.username !== undefined
         });
         
-        // Update existing profile - only include fields that actually changed
-        result = await db.update('player_profiles', 
-          { _row_id: 'eq.' + existingProfiles[0]._row_id }, 
+        // Update the most recently updated profile
+        const updateResult = await db.update('player_profiles', 
+          { _row_id: 'eq.' + targetProfile._row_id }, 
           profileData
         );
-        console.log('✅ profileService.updateProfile: Profile updated successfully', { result });
+        
+        console.log('🔍 profileService.updateProfile: Update operation result', { 
+          updateResult,
+          profileId: existingProfiles[0]._row_id,
+          updatedFields: Object.keys(profileData)
+        });
+        
+        // Validate that the update actually happened
+        if (!updateResult || updateResult.length === 0) {
+          throw new Error('Update failed: No rows were affected. Please try again.');
+        }
+        
+        console.log('✅ profileService.updateProfile: Profile updated successfully', { updateResult });
+        result = updateResult;
       } else {
         console.log('➕ profileService.updateProfile: Creating new profile');
         // Create new profile - include all data for new profile
@@ -943,10 +1055,26 @@ export const profileService = {
         _created_by: 'eq.' + user.id
       });
 
-      console.log('✅ profileService.updateProfile: Verification complete', { 
-        profileCount: verificationProfile?.length || 0,
-        profile: verificationProfile?.[0] 
-      });
+      if (verificationProfile && verificationProfile.length > 0) {
+        const sortedVerification = verificationProfile.sort((a, b) => (b._updated_at || 0) - (a._updated_at || 0));
+        const latestProfile = sortedVerification[0];
+        
+        console.log('✅ profileService.updateProfile: Verification complete', { 
+          profileCount: verificationProfile.length,
+          latestProfile: {
+            _row_id: latestProfile._row_id,
+            username: latestProfile.username,
+            display_name: latestProfile.display_name,
+            avatar_url: latestProfile.avatar_url,
+            bio: latestProfile.bio,
+            country: latestProfile.country,
+            _updated_at: latestProfile._updated_at
+          },
+          updatedFields: Object.keys(profileData)
+        });
+      } else {
+        console.log('⚠️ profileService.updateProfile: No profiles found after verification');
+      }
 
       return result;
     } catch (error) {
