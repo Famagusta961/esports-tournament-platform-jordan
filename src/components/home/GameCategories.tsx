@@ -86,7 +86,7 @@ const GameCategories = () => {
     const container = containerRef.current;
     if (!container) return;
     
-    const scrollAmount = 300; // Adjust for card width + gap
+    const scrollAmount = 400; // Adjusted for larger cards
     if (direction === 'left') {
       container.scrollLeft -= scrollAmount;
     } else {
@@ -167,13 +167,13 @@ const GameCategories = () => {
           {/* Games Horizontal Scroll */}
           <div
             ref={containerRef}
-            className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth py-2 px-1"
+            className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth py-2 px-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {games.map((game, index) => (
               <div
                 key={game.id}
-                className="flex-none w-40 sm:w-44 animate-slide-up"
+                className="flex-none w-48 sm:w-56 animate-slide-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Link
@@ -184,9 +184,9 @@ const GameCategories = () => {
                   <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-10 group-hover:opacity-20 transition-opacity`} />
                   
                   {/* Content */}
-                  <div className="relative p-4 sm:p-6 text-center">
+                  <div className="relative p-6 text-center">
                     {/* Game Image */}
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
                       {game.image ? (
                         <img 
                           src={game.image} 
@@ -195,18 +195,18 @@ const GameCategories = () => {
                           style={{ width: '100%', height: '100%' }}
                         />
                       ) : (
-                        <ImageIcon className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
+                        <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground" />
                       )}
                     </div>
                     
                     {/* Game Name */}
-                    <h3 className="font-gaming font-semibold text-sm sm:text-base mb-2 group-hover:text-primary transition-colors truncate">
+                    <h3 className="font-gaming font-semibold text-base sm:text-lg mb-3 group-hover:text-primary transition-colors">
                       {game.name}
                     </h3>
                     
                     {/* Stats */}
-                    <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground">
-                      <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
+                      <span className="px-3 py-1 rounded-full bg-primary/10 text-primary">
                         {game.activeTournaments} Active
                       </span>
                     </div>
