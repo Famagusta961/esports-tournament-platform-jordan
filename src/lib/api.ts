@@ -853,6 +853,7 @@ console.log('👤 debugProfileService.debugUserVsProfileMapping: Current user de
   }
 };
 // Player Profile service using database SDK
+// Player Profile service using database SDK
 export const profileService = {
   // Get player profile (ONE profile per user)
   getProfile: async () => {
@@ -867,7 +868,8 @@ export const profileService = {
         console.log('❌ profileService.getProfile: User not authenticated');
         throw new Error('User not authenticated');
       }
-// Kliv auth uses userUuid field - normalize for consistency
+
+      // Kliv auth uses userUuid field - normalize for consistency
       const user_id = user.userUuid || user.id;
       
       console.log('👤 profileService.getProfile: WHO AM I - User details', { 
@@ -885,20 +887,7 @@ export const profileService = {
         throw new Error('Invalid user session - no valid ID found');
       }
       
-// TEMPORARY: Debug query to see ALL profiles
-      const { data: allProfilesDebug } = await db.query('player_profiles');
-      console.log('📊 DEBUG: All profiles in DB', { 
-        totalProfiles: allProfilesDebug?.length || 0,
-        profiles: allProfilesDebug?.map(p => ({
-          _row_id: p._row_id,
-          _created_by: p._created_by,
-          username: p.username,
-          display_name: p.display_name,
-          avatar_url: p.avatar_url
-        }))
-      });
-      
-      // Enforce ONE profile per user - get by _created_by only
+      // First try to get existing profile
       const queryFilter = { _created_by: 'eq.' + user_id };
       console.log('🔍 profileService.getProfile: Query filter used', { 
         filter: queryFilter,
@@ -943,22 +932,17 @@ export const profileService = {
         return profile;
       }
 
-      console.log('⚠️ profileService.getProfile: No profile found for user');
-      console.log('❓ profileService.getProfile: Possible issues:');
-      console.log('  1. user.id (' + user_id + ') does not match any _created_by in player_profiles');
-      console.log('  2. RLS policy blocking access');
-      console.log('  3. User never created a profile');
-      console.log('  4. Database connection issue');
-      return null;
+      // No profile found - auto-create one
+      console.log('⚠️ profileService.getProfile: No profile found for user, auto-creating...');
+      return await profileService.createProfileIfMissing();
+      
     } catch (error) {
       console.error('❌ profileService.getProfile: Failed to fetch player profile', error);
       handleApiError(error, 'Failed to fetch player profile');
     }
   },
 
-  // Removed getActiveUsername - not needed with ONE profile per user
-
-  // UPSERT player profile - guarantee ONE profile per user
+// UPSERT player profile - guarantee ONE profile per user
   updateProfile: async (data: {
     display_name?: string;
     username?: string;
@@ -970,204 +954,87 @@ export const profileService = {
       console.log('🔧 profileService.updateProfile: Starting UPSERT', { data });
       const user = await auth.getUser();
       
-      console.log('🔧 profileService.updateProfile: RAW USER FROM auth.getUser():', user);
-      
       if (!user) {
-        console.log('❌ profileService.updateProfile: User not authenticated');
         throw new Error('User not authenticated');
       }
 
-// Kliv auth uses userUuid field - normalize for consistency
       const user_id = user.userUuid || user.id;
       
-      console.log('👤 profileService.updateProfile: WHO AM I - User details', { 
-        userUuid: user.userUuid,
-        fallbackId: user.id,
-        userId: user_id,
-        userEmail: user.email,
-        userName: user.name,
-        firstName: user.firstName,
-        allFields: Object.keys(user)
-      });
-      
       if (!user_id || user_id === 'UNKNOWN') {
-        console.error('❌ profileService.updateProfile: No valid user ID found in user object');
         throw new Error('Invalid user session - no valid ID found');
       }
-      // Validation rules
-      if (data.username) {
-        console.log('🔍 profileService.updateProfile: Validating username', { username: data.username });
-        // Username must be 3-20 characters, letters, numbers, underscores only
-        if (!/^[a-zA-Z0-9_]{3,20}$/.test(data.username)) {
-          throw new Error('Username must be 3-20 characters and contain only letters, numbers, and underscores');
-        }
-
-        // Check if username is taken by someone else (exclude current user)
-        console.log('🔍 profileService.updateProfile: Checking username uniqueness');
-        const { data: existingProfiles } = await db.query('player_profiles', {
-          username: 'eq.' + data.username
-        });
-
-        const otherUserProfiles = existingProfiles?.filter(profile => profile._created_by !== user_id) || [];
-        
-        if (otherUserProfiles.length > 0) {
-          console.log('❌ profileService.updateProfile: Username already taken by another user', { 
-            username: data.username,
-            otherProfiles: otherUserProfiles.map(p => ({ 
-              _row_id: p._row_id, 
-              username: p.username, 
-              _created_by: p._created_by 
-            }))
-          });
-          throw new Error('Username already taken, please choose another one.');
-        } else {
-          console.log('✅ profileService.updateProfile: Username available or belongs to current user');
-        }
-      }
-
-      if (data.display_name && data.display_name.length > 50) {
-        throw new Error('Display name must be 50 characters or less');
-      }
-
-      if (data.bio && data.bio.length > 500) {
-        throw new Error('Bio must be 500 characters or less');
-      }
-
-      // UPSERT LOGIC: Check if user has existing profile
-      console.log('🔍 profileService.updateProfile: Checking for existing profile by user ID');
+      
+      console.log('👤 profileService.updateProfile: Working with user_id:', user_id);
+      
+      // First check if profile exists
       const { data: existingProfiles } = await db.query('player_profiles', {
         _created_by: 'eq.' + user_id
       });
-
-      console.log('📊 profileService.updateProfile: Existing profile check', { 
-        existingCount: existingProfiles?.length || 0,
-        existingProfile: existingProfiles?.[0] 
-      });
-
-      const currentProfile = existingProfiles?.[0];
-      let targetRowId: number | undefined;
       
-      if (currentProfile) {
-        targetRowId = currentProfile._row_id;
-        console.log('🔄 profileService.updateProfile: UPDATE mode - targeting existing row', { 
-          targetRowId,
-          username: currentProfile.username
-        });
+      if (existingProfiles && existingProfiles.length > 0) {
+        // UPDATE existing profile
+        const targetProfile = existingProfiles[0];
+        const targetRowId = targetProfile._row_id;
         
-        // Prepare update data
-        const updateData: Record<string, string | number> = {
-          _updated_at: Math.floor(Date.now() / 1000)
-        };
-
-        // Only include fields that are being updated
+        console.log('🔄 profileService.updateProfile: UPDATE mode - targeting row ' + targetRowId);
+        
+        // Build update data with only provided fields
+        const updateData: {
+          display_name?: string;
+          username?: string;
+          avatar_url?: string;
+          bio?: string;
+          country?: string;
+        } = {};
         if (data.display_name !== undefined) {
           updateData.display_name = data.display_name;
-          console.log('📝 Updating display_name:', data.display_name);
         }
         if (data.username !== undefined) {
           updateData.username = data.username;
-          console.log('📝 Updating username:', data.username);
         }
         if (data.avatar_url !== undefined) {
           updateData.avatar_url = data.avatar_url;
-          console.log('📝 Updating avatar_url:', data.avatar_url);
         }
         if (data.bio !== undefined) {
           updateData.bio = data.bio;
-          console.log('📝 Updating bio:', data.bio);
         }
         if (data.country !== undefined) {
           updateData.country = data.country;
-          console.log('📝 Updating country:', data.country);
         }
-
-        console.log('📝 profileService.updateProfile: Final update data for row ' + targetRowId, { updateData });
         
         const updateResult = await db.update('player_profiles', 
           { _row_id: 'eq.' + targetRowId }, 
           updateData
         );
         
-        console.log('🔍 profileService.updateProfile: Update operation result', { 
-          targetRowId,
-          updateResult,
-          affectedRows: updateResult?.length || 0
-        });
+        console.log('✅ profileService.updateProfile: UPDATE successful', { updateResult });
         
-        // Verify the update worked
-        if (!updateResult || updateResult.length === 0) {
-          throw new Error('Update failed: No rows were affected');
-        }
-        
-        // Re-select the same row to verify
-        console.log('🔍 profileService.updateProfile: Re-selecting row ' + targetRowId + ' for verification');
-        const { data: verificationResult } = await db.query('player_profiles', {
+        // Re-fetch to verify
+        const { data: verificationProfile } = await db.query('player_profiles', {
           _row_id: 'eq.' + targetRowId
         });
         
-        console.log('📊 profileService.updateProfile: Verification result', { 
-          targetRowId,
-          verificationResult: verificationResult?.[0]
-        });
-        
-        if (!verificationResult || verificationResult.length === 0) {
-          throw new Error('Update verification failed: Row not found after update');
-        }
-        
-        console.log('✅ profileService.updateProfile: UPDATE successful and verified', { 
-          updatedProfile: verificationResult[0]
-        });
-        
-    } else {
+        return verificationProfile?.[0] || null;
+      } else {
+        // INSERT new profile
         console.log('➕ profileService.updateProfile: INSERT mode - creating new profile');
         const newProfileData = {
           ...data,
-          _created_by: user_id,
-          _created_at: Math.floor(Date.now() / 1000),
-          _updated_at: Math.floor(Date.now() / 1000)
+          _created_by: user_id
         };
-        
-        console.log('📝 profileService.updateProfile: New profile data', { newProfileData });
         
         const insertResult = await db.insert('player_profiles', newProfileData);
         console.log('✅ profileService.updateProfile: INSERT successful', { insertResult });
-      }
-      // Verify the UPSERT by querying the profile again
-      console.log('🔍 profileService.updateProfile: Verifying UPSERT result');
-      const { data: verificationProfile } = await db.query('player_profiles', {
-        _created_by: 'eq.' + user_id
-      });
-
-      if (verificationProfile && verificationProfile.length === 1) {
-        const profile = verificationProfile[0];
-        console.log('✅ profileService.updateProfile: UPSERT verification successful', { 
-          _row_id: profile._row_id,
-          _created_by: profile._created_by,
-          username: profile.username,
-          display_name: profile.display_name,
-          avatar_url: profile.avatar_url,
-          bio: profile.bio,
-          country: profile.country
+        
+        // Re-fetch to verify
+        const { data: verificationProfile } = await db.query('player_profiles', {
+          _created_by: 'eq.' + user_id
         });
-      } else {
-        console.log('⚠️ profileService.updateProfile: UPSERT verification failed', { 
-          profileCount: verificationProfile?.length || 0 
-        });
+        
+        return verificationProfile?.[0] || null;
       }
-
-      return verificationProfile?.[0] || null;
     } catch (error) {
       console.error('❌ profileService.updateProfile: UPSERT failed', error);
-      
-      // Enhanced error logging
-      if (error.message && error.message.includes('UNIQUE constraint failed')) {
-        console.error('❌ profileService.updateProfile: UNIQUE constraint error details', {
-          attemptedUsername: data.username,
-          errorMessage: error.message
-        });
-        throw new Error('Username already taken, please choose another one.');
-      }
-      
       handleApiError(error, 'Failed to update player profile');
     }
   },
@@ -1177,60 +1044,28 @@ export const profileService = {
     try {
       console.log('🔍 profileService.checkUsername: Checking username availability', { username });
       if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-        console.log('❌ profileService.checkUsername: Invalid username format');
         return false;
       }
 
-      // Get current user
       const user = await auth.getUser();
       if (!user) {
-        console.log('❌ profileService.checkUsername: User not authenticated');
         return false;
       }
 
-// Kliv auth uses userUuid field - normalize for consistency
       const user_id = user.userUuid || user.id;
-      console.log('👤 profileService.checkUsername: User authenticated for username check', { userId: user_id });
 
       const { data: profiles } = await db.query('player_profiles', {
         username: 'eq.' + username
       });
 
-      console.log('📊 profileService.checkUsername: Found profiles with username', { 
-        username,
-        profileCount: profiles?.length || 0,
-        profiles: profiles?.map(p => ({ 
-          _row_id: p._row_id, 
-          username: p.username, 
-          _created_by: p._created_by 
-        }))
-      });
-
-      // Check if any existing username belongs to someone else
       if (profiles && profiles.length > 0) {
         const otherUserProfiles = profiles.filter(profile => profile._created_by !== user_id);
-        const isAvailable = otherUserProfiles.length === 0;
-        
-        console.log('📊 profileService.checkUsername: Username availability result', { 
-          username,
-          profileCount: profiles?.length || 0,
-          otherUserProfiles: otherUserProfiles.length,
-          isAvailable 
-        });
-        
-        return isAvailable;
+        return otherUserProfiles.length === 0;
       }
 
-      console.log('📊 profileService.checkUsername: Username availability result', { 
-        username,
-        profileCount: 0,
-        isAvailable: true 
-      });
-
-return true;
+      return true;
     } catch (error) {
       console.error('❌ profileService.checkUsername: Failed to check username availability', error);
-      handleApiError(error, 'Failed to check username availability');
       return false;
     }
   },
@@ -1242,15 +1077,12 @@ return true;
       const user = await auth.getUser();
       
       if (!user) {
-        console.log('❌ profileService.createProfileIfMissing: User not authenticated');
         throw new Error('User not authenticated');
       }
 
-      // Kliv auth uses userUuid field - normalize for consistency
       const user_id = user.userUuid || user.id;
       
       if (!user_id || user_id === 'UNKNOWN') {
-        console.error('❌ profileService.createProfileIfMissing: No valid user ID found');
         throw new Error('Invalid user session - no valid ID found');
       }
 
@@ -1260,9 +1092,6 @@ return true;
       });
 
       if (existingProfiles && existingProfiles.length > 0) {
-        console.log('✅ profileService.createProfileIfMissing: Profile already exists', { 
-          profile: existingProfiles[0] 
-        });
         return existingProfiles[0];
       }
 
@@ -1273,25 +1102,46 @@ return true;
         avatar_url: '',
         bio: '',
         country: '',
-        _created_by: user_id,
-        _created_at: Math.floor(Date.now() / 1000),
-        _updated_at: Math.floor(Date.now() / 1000)
+        _created_by: user_id
       };
 
       console.log('📝 profileService.createProfileIfMissing: Creating default profile', { defaultProfileData });
       
-      const insertResult = await db.insert('player_profiles', defaultProfileData);
-      console.log('✅ profileService.createProfileIfMissing: Profile created successfully', { insertResult });
+      try {
+        const insertResult = await db.insert('player_profiles', defaultProfileData);
+        console.log('✅ profileService.createProfileIfMissing: Profile created successfully', { insertResult });
 
-      // Return the created profile
-      const { data: verificationProfile } = await db.query('player_profiles', {
-        _created_by: 'eq.' + user_id
-      });
+        // Wait a brief moment for database consistency
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      return verificationProfile?.[0] || null;
+        // Return the created profile
+        const { data: verificationProfile } = await db.query('player_profiles', {
+          _created_by: 'eq.' + user_id
+        });
+
+        if (verificationProfile && verificationProfile.length > 0) {
+          return verificationProfile[0];
+        } else {
+          throw new Error('Profile creation verification failed');
+        }
+      } catch (insertError) {
+        console.error('❌ profileService.createProfileIfMissing: Database insert failed', insertError);
+        
+        // Final retry - try to fetch profile in case of race condition
+        const { data: retryProfile } = await db.query('player_profiles', {
+          _created_by: 'eq.' + user_id
+        });
+        
+        if (retryProfile && retryProfile.length > 0) {
+          return retryProfile[0];
+        }
+        
+        throw insertError;
+      }
     } catch (error) {
       console.error('❌ profileService.createProfileIfMissing: Failed to create profile', error);
       handleApiError(error, 'Failed to create player profile');
+      throw error;
     }
   }
 };

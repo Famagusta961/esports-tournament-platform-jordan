@@ -76,47 +76,42 @@ useEffect(() => {
     console.log('🔐 AuthContext: Initializing...');
     refreshUser();
     
-    // Set up auth state listener
-    const setupAuthListener = async () => {
+    // Set up more frequent auth state listener for immediate updates
+    let lastAuthCheck = 0;
+    const checkAuthState = async () => {
       try {
-        // In Kliv, we need to poll for auth state changes
-        const checkAuthState = async () => {
-          try {
-            const currentUser = await auth.getUser();
-            
-            // Only update if the auth state actually changed
-            if (currentUser?.userUuid !== user?.userUuid || 
-                currentUser?.id !== user?.id ||
-                currentUser?.email !== user?.email) {
-              console.log('🔐 AuthContext: Auth state changed detected, refreshing...');
-              refreshUser();
-            }
-          } catch (error) {
-            // User logged out
-            if (error.message.includes('User not authenticated') && user) {
-              console.log('🔐 AuthContext: User logged out detected');
-              setUser(null);
-            }
-          }
-        };
+        const now = Date.now();
+        // Throttle to every 100ms for near-instant updates
+        if (now - lastAuthCheck < 100) return;
+        lastAuthCheck = now;
         
-        // Check auth state every 2 seconds to catch sign in/out
-        const interval = setInterval(checkAuthState, 2000);
+        const currentUser = await auth.getUser();
+        const user_id = currentUser?.userUuid || currentUser?.id;
+        const currentUserId = user?.userUuid || user?.id;
         
-        // Cleanup listener
-        return () => clearInterval(interval);
+        // Only update if the auth state actually changed
+        if (user_id !== currentUserId || 
+            currentUser?.email !== user?.email) {
+          console.log('🔐 AuthContext: Auth state changed detected', {
+            from: { id: currentUserId, email: user?.email },
+            to: { id: user_id, email: currentUser?.email }
+          });
+          refreshUser();
+        }
       } catch (error) {
-        console.error('🔐 AuthContext: Failed to set up auth listener', error);
+        // User logged out
+        if (error.message?.includes('User not authenticated') && user) {
+          console.log('🔐 AuthContext: User logged out detected');
+          setUser(null);
+        }
       }
     };
     
-    const cleanup = setupAuthListener();
-    return () => {
-      if (cleanup && typeof cleanup === 'function') {
-        cleanup();
-      }
-    };
-}, []);
+    // Check auth state every 100ms for near-instant UI updates
+    const interval = setInterval(checkAuthState, 100);
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   const value: AuthContextType = {
     user,
