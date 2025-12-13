@@ -20,6 +20,8 @@ export default function Wallet() {
     pending_withdrawals: 0,
     total_withdrawn: 0
   });
+  
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
 
   // Only fetch balance when user.uuid is available
   useEffect(() => {
@@ -101,6 +103,48 @@ export default function Wallet() {
     };
   }, []); // Dependency array is empty - effect runs once
   
+  // Separate effect for transactions - C2 (simplified)
+  useEffect(() => {
+    let aborted = false;
+
+    const fetchTransactions = async () => {
+      try {
+        console.log(" WALLET: Starting transactions fetch");
+        
+        const user = await auth.getUser();
+        console.log(" WALLET: Auth user for transactions:", user?.uuid ? 'found' : 'missing');
+        
+        if (!user?.uuid) {
+          console.log(" WALLET: No UUID - aborting transactions fetch");
+          return;
+        }
+
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        if (!aborted) {
+          console.log(" WALLET: Transactions fetch complete");
+          setTransactionsLoading(false);
+        }
+      } catch (err) {
+        if (aborted) return;
+        console.error(" WALLET: Transactions fetch error:", err);
+      } finally {
+        if (!aborted) {
+          setTransactionsLoading(false);
+          console.log(" WALLET: Transactions fetch complete, loading=false");
+        }
+      }
+    };
+
+    fetchTransactions();
+
+    return () => {
+      aborted = true;
+      console.log(" WALLET: Transactions effect cleanup");
+    };
+  }, []); // Separate empty dependency array - effect runs once independently
+  
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -171,15 +215,32 @@ export default function Wallet() {
             </TabsList>
 
             <TabsContent value="all" className="mt-4">
-              <div className="text-center py-8 text-gray-500">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
+              {transactionsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gray-200 animate-pulse rounded-full"></div>
+                        <div>
+                          <div className="h-4 w-24 bg-gray-200 animate-pulse rounded"></div>
+                          <div className="h-3 w-16 bg-gray-200 animate-pulse rounded mt-1"></div>
+                        </div>
+                      </div>
+                      <div className="h-5 w-16 bg-gray-200 animate-pulse rounded"></div>
+                    </div>
+                  ))}
                 </div>
-                <p>No transactions yet</p>
-                <p className="text-sm mt-1">All transactions will appear here</p>
-              </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <p>Transaction history coming soon</p>
+                  <p className="text-sm mt-1">Full transaction details will appear here</p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="deposits" className="mt-4">
