@@ -88,9 +88,10 @@ const GameCategories = () => {
     if (!container) return;
     
     // Calculate center-aligned scroll position for precise centering
-    const containerWidth = container.clientWidth;
-    const cardWidth = window.innerWidth < 640 ? 288 : 224; // Mobile: w-72, Desktop: w-56
+    const isMobile = window.innerWidth < 640;
+    const cardWidth = isMobile ? 288 : 224; // Mobile: w-72, Desktop: w-56
     const gap = 24; // gap-6
+    const containerWidth = container.clientWidth;
     
     let newIndex;
     if (direction === 'left') {
@@ -103,7 +104,14 @@ const GameCategories = () => {
     
     // Calculate exact center scroll position
     const targetScrollLeft = newIndex * (cardWidth + gap) - (containerWidth - cardWidth) / 2;
-    container.scrollLeft = targetScrollLeft;
+    
+    // Use scrollTo for exact positioning
+    container.scrollTo({
+      left: targetScrollLeft,
+      behavior: 'smooth'
+    });
+    
+    console.log('Scrolling to index:', newIndex, 'position:', targetScrollLeft);
   };
 
   const checkScrollButtons = () => {
@@ -112,27 +120,45 @@ const GameCategories = () => {
   };
 
   useEffect(() => {
+    checkScrollButtons();
+  }, [currentIndex]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     
-    // Initialize with first game centered
-    setTimeout(() => {
-      const containerWidth = container.clientWidth;
-      const cardWidth = window.innerWidth < 640 ? 288 : 224;
+    // Initialize with first game centered (only run once)
+    const initializePosition = () => {
+      const isMobile = window.innerWidth < 640;
+      const cardWidth = isMobile ? 288 : 224;
       const gap = 24;
+      const containerWidth = container.clientWidth;
       const targetScrollLeft = 0 * (cardWidth + gap) - (containerWidth - cardWidth) / 2;
-      container.scrollLeft = -targetScrollLeft; // Starting position
-    }, 100);
+      
+      // Use scrollTo for initial positioning
+      container.scrollTo({
+        left: targetScrollLeft,
+        behavior: 'smooth'
+      });
+      
+      console.log('Initial position:', targetScrollLeft);
+    };
     
-    checkScrollButtons();
+    // Small delay to ensure container is rendered
+    setTimeout(initializePosition, 100);
+    
     container.addEventListener('scroll', checkScrollButtons);
-    window.addEventListener('resize', checkScrollButtons);
+    
+    // Update checkScrollButtons when currentIndex changes
+    const updateCheck = () => checkScrollButtons();
+    
+    window.addEventListener('resize', updateCheck);
     
     return () => {
       container.removeEventListener('scroll', checkScrollButtons);
-      window.removeEventListener('resize', checkScrollButtons);
+      window.removeEventListener('resize', updateCheck);
     };
-  }, [currentIndex]);
+  }, []);
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
@@ -162,7 +188,7 @@ const GameCategories = () => {
           {canScrollLeft && (
             <button
               onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-background hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-background hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Scroll left"
             >
               <ChevronLeft className="w-5 h-5 text-foreground" />
@@ -173,7 +199,7 @@ const GameCategories = () => {
           {canScrollRight && (
             <button
               onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-background hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-background hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Scroll right"
             >
               <ChevronRight className="w-5 h-5 text-foreground" />
