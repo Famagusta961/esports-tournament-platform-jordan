@@ -760,6 +760,71 @@ export const debugProfileService = {
       console.error('❌ debugProfileService.queryProfileByUserId: Failed', error);
       return null;
     }
+  },
+
+  // Comprehensive user vs profile mapping debug
+  debugUserVsProfileMapping: async () => {
+    try {
+      console.log('🔍 debugProfileService.debugUserVsProfileMapping: Starting comprehensive debug');
+      
+      // Get current user
+      const currentUser = await auth.getUser();
+      if (!currentUser) {
+        console.log('❌ debugProfileService.debugUserVsProfileMapping: No authenticated user');
+        return null;
+      }
+
+      console.log('👤 debugProfileService.debugUserVsProfileMapping: Current user details', {
+        userId: currentUser.id,
+        userEmail: currentUser.email,
+        userName: currentUser.name
+      });
+
+      // Get ALL profiles
+      const { data: allProfiles } = await db.query('player_profiles');
+      console.log('📊 debugProfileService.debugUserVsProfileMapping: All profiles in database', {
+        totalProfiles: allProfiles?.length || 0,
+        profiles: allProfiles?.map(p => ({
+          _row_id: p._row_id,
+          _created_by: p._created_by,
+          username: p.username,
+          display_name: p.display_name,
+          matchesCurrentUser: p._created_by === currentUser.id
+        }))
+      });
+
+      // Find profiles for current user
+      const userProfiles = allProfiles?.filter(p => p._created_by === currentUser.id) || [];
+      console.log('📊 debugProfileService.debugUserVsProfileMapping: Profiles for current user', {
+        userId: currentUser.id,
+        matchingProfiles: userProfiles.length,
+        profiles: userProfiles
+      });
+
+      // Test direct query
+      const { data: directQuery } = await db.query('player_profiles', {
+        _created_by: 'eq.' + currentUser.id
+      });
+      console.log('📊 debugProfileService.debugUserVsProfileMapping: Direct query result', {
+        queryFilter: { _created_by: 'eq.' + currentUser.id },
+        result: directQuery
+      });
+
+      return {
+        currentUser: {
+          id: currentUser.id,
+          email: currentUser.email,
+          name: currentUser.name
+        },
+        allProfilesCount: allProfiles?.length || 0,
+        userProfilesCount: userProfiles.length,
+        directQueryCount: directQuery?.length || 0,
+        hasProfile: userProfiles.length > 0
+      };
+    } catch (error) {
+      console.error('❌ debugProfileService.debugUserVsProfileMapping: Debug failed', error);
+      return null;
+    }
   }
 };
 
@@ -775,22 +840,48 @@ export const profileService = {
         throw new Error('User not authenticated');
       }
 
-      console.log('👤 profileService.getProfile: User authenticated', { userId: user.id });
+      console.log('👤 profileService.getProfile: WHO AM I - User details', { 
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.name
+      });
+      
+      // TEMPORARY: Debug query to see ALL profiles
+      console.log('🔍 DEBUG: Querying ALL profiles to compare _created_by values');
+      const { data: allProfiles } = await db.query('player_profiles');
+      console.log('📊 DEBUG: All profiles in DB', { 
+        totalProfiles: allProfiles?.length || 0,
+        profiles: allProfiles?.map(p => ({
+          _row_id: p._row_id,
+          _created_by: p._created_by,
+          username: p.username,
+          display_name: p.display_name,
+          avatar_url: p.avatar_url
+        }))
+      });
       
       // Enforce ONE profile per user - get by _created_by only
-      const { data: profiles } = await db.query('player_profiles', {
-        _created_by: 'eq.' + user.id
-      });
+      const queryFilter = { _created_by: 'eq.' + user.id };
+      console.log('🔍 profileService.getProfile: Query filter used', { queryFilter });
+      
+      const { data: profiles } = await db.query('player_profiles', queryFilter);
 
       console.log('📊 profileService.getProfile: Profile query result', { 
         profileCount: profiles?.length || 0,
-        profile: profiles?.[0] 
+        profiles: profiles?.map(p => ({
+          _row_id: p._row_id,
+          _created_by: p._created_by,
+          username: p.username,
+          display_name: p.display_name,
+          avatar_url: p.avatar_url
+        }))
       });
 
       // Return the first (and only) profile
       if (profiles && profiles.length > 0) {
         console.log('📋 profileService.getProfile: Returning user profile', {
           _row_id: profiles[0]._row_id,
+          _created_by: profiles[0]._created_by,
           username: profiles[0].username,
           display_name: profiles[0].display_name,
           avatar_url: profiles[0].avatar_url
@@ -799,6 +890,10 @@ export const profileService = {
       }
 
       console.log('⚠️ profileService.getProfile: No profile found for user');
+      console.log('❓ profileService.getProfile: Possible issues:');
+      console.log('  1. user.id does not match any _created_by in player_profiles');
+      console.log('  2. RLS policy blocking access');
+      console.log('  3. User never created a profile');
       return null;
     } catch (error) {
       console.error('❌ profileService.getProfile: Failed to fetch player profile', error);
@@ -808,7 +903,7 @@ export const profileService = {
 
   // Removed getActiveUsername - not needed with ONE profile per user
 
-  // Create or update player profile
+  // UPSERT player profile - guarantee ONE profile per user
   updateProfile: async (data: {
     display_name?: string;
     username?: string;
@@ -817,14 +912,17 @@ export const profileService = {
     country?: string;
   }) => {
     try {
-      console.log('🔧 profileService.updateProfile: Starting profile update', { data });
+      console.log('🔧 profileService.updateProfile: Starting UPSERT', { data });
       const user = await auth.getUser();
       if (!user) {
         console.log('❌ profileService.updateProfile: User not authenticated');
         throw new Error('User not authenticated');
       }
 
-      console.log('👤 profileService.updateProfile: User authenticated', { userId: user.id });
+      console.log('👤 profileService.updateProfile: WHO AM I - User details', { 
+        userId: user.id,
+        userEmail: user.email
+      });
 
       // Validation rules
       if (data.username) {
@@ -834,51 +932,26 @@ export const profileService = {
           throw new Error('Username must be 3-20 characters and contain only letters, numbers, and underscores');
         }
 
-        // Check if user has an existing profile first
-        console.log('🔍 profileService.updateProfile: Getting current user profile for username check');
-        const { data: currentProfile } = await db.query('player_profiles', {
-          _created_by: 'eq.' + user.id
-        });
-
-        console.log('📊 profileService.updateProfile: Current user profile', { 
-          currentProfile: currentProfile?.[0] 
-        });
-
-        // Check if username is already taken (exclude current user's own profile)
+        // Check if username is taken by someone else (exclude current user)
         console.log('🔍 profileService.updateProfile: Checking username uniqueness');
         const { data: existingProfiles } = await db.query('player_profiles', {
           username: 'eq.' + data.username
         });
 
-        console.log('📊 profileService.updateProfile: Checking username uniqueness', { 
-          username: data.username,
-          existingCount: existingProfiles?.length || 0,
-          existingProfiles: existingProfiles?.map(p => ({ 
-            _row_id: p._row_id, 
-            username: p.username, 
-            _created_by: p._created_by 
-          }))
-        });
-
-        // Check if username belongs to someone else (exclude current user)
-        if (existingProfiles && existingProfiles.length > 0) {
-          const otherUserProfiles = existingProfiles.filter(profile => profile._created_by !== user.id);
-          
-          if (otherUserProfiles.length > 0) {
-            console.log('❌ profileService.updateProfile: Username already taken by another user', { 
-              username: data.username,
-              otherProfiles: otherUserProfiles.map(p => ({ 
-                _row_id: p._row_id, 
-                username: p.username, 
-                _created_by: p._created_by 
-              }))
-            });
-            throw new Error('Username already taken, please choose another one.');
-          } else {
-            console.log('✅ profileService.updateProfile: Username belongs to current user');
-          }
+        const otherUserProfiles = existingProfiles?.filter(profile => profile._created_by !== user.id) || [];
+        
+        if (otherUserProfiles.length > 0) {
+          console.log('❌ profileService.updateProfile: Username already taken by another user', { 
+            username: data.username,
+            otherProfiles: otherUserProfiles.map(p => ({ 
+              _row_id: p._row_id, 
+              username: p.username, 
+              _created_by: p._created_by 
+            }))
+          });
+          throw new Error('Username already taken, please choose another one.');
         } else {
-          console.log('✅ profileService.updateProfile: Username is available');
+          console.log('✅ profileService.updateProfile: Username available or belongs to current user');
         }
       }
 
@@ -890,8 +963,8 @@ export const profileService = {
         throw new Error('Bio must be 500 characters or less');
       }
 
-      console.log('🔍 profileService.updateProfile: Checking if profile exists for user');
-      // Check if profile exists
+      // UPSERT LOGIC: Check if user has existing profile
+      console.log('🔍 profileService.updateProfile: Checking for existing profile by user ID');
       const { data: existingProfiles } = await db.query('player_profiles', {
         _created_by: 'eq.' + user.id
       });
@@ -903,64 +976,41 @@ export const profileService = {
 
       const currentProfile = existingProfiles?.[0];
       
-      // Prepare update data - exclude username if it hasn't changed to avoid UNIQUE constraint issues
-      const profileData: Record<string, string | number> = {
-        _updated_at: Math.floor(Date.now() / 1000) // Current timestamp
-      };
-
-      // Only include fields that are being updated
-      if (data.display_name !== undefined) profileData.display_name = data.display_name;
-      if (data.avatar_url !== undefined) profileData.avatar_url = data.avatar_url;
-      if (data.bio !== undefined) profileData.bio = data.bio;
-      if (data.country !== undefined) profileData.country = data.country;
-      
-      // Only include username if it's different from current or if no current profile exists
-      if (data.username !== undefined && (!currentProfile || data.username !== currentProfile.username)) {
-        profileData.username = data.username;
-        console.log('🔄 profileService.updateProfile: Username will be updated', { 
-          oldUsername: currentProfile?.username, 
-          newUsername: data.username 
-        });
-      } else if (data.username !== undefined && currentProfile && data.username === currentProfile.username) {
-        console.log('⏭️ profileService.updateProfile: Username unchanged, excluding from update');
-      }
-
-      console.log('📝 profileService.updateProfile: Final profile data for update', { profileData });
-
       let result;
-      if (existingProfiles && existingProfiles.length > 0) {
-        // ENFORCE ONE PROFILE PER USER: Update the first (and only) profile
-        const targetProfile = existingProfiles[0];
-        
-        console.log('🔄 profileService.updateProfile: Updating existing profile (ONE PER USER)', { 
-          profileId: targetProfile._row_id,
-          username: targetProfile.username,
-          display_name: targetProfile.display_name,
-          updatedFields: Object.keys(profileData)
+      if (currentProfile) {
+        // UPDATE existing profile (guaranteed to be only one)
+        console.log('🔄 profileService.updateProfile: UPSERT - UPDATE existing profile', { 
+          profileId: currentProfile._row_id,
+          username: currentProfile.username
         });
         
-        // Update the single profile for this user
-        const updateResult = await db.update('player_profiles', 
-          { _row_id: 'eq.' + targetProfile._row_id }, 
-          profileData
+        // Prepare update data
+        const updateData: Record<string, string | number> = {
+          _updated_at: Math.floor(Date.now() / 1000)
+        };
+
+        // Only include fields that are being updated
+        if (data.display_name !== undefined) updateData.display_name = data.display_name;
+        if (data.username !== undefined) updateData.username = data.username;
+        if (data.avatar_url !== undefined) updateData.avatar_url = data.avatar_url;
+        if (data.bio !== undefined) updateData.bio = data.bio;
+        if (data.country !== undefined) updateData.country = data.country;
+
+        console.log('📝 profileService.updateProfile: Update data', { updateData });
+        
+        result = await db.update('player_profiles', 
+          { _row_id: 'eq.' + currentProfile._row_id }, 
+          updateData
         );
         
-        console.log('🔍 profileService.updateProfile: Update operation result', { 
-          updateResult,
-          profileId: targetProfile._row_id,
-          updatedFields: Object.keys(profileData)
+        console.log('✅ profileService.updateProfile: Profile updated successfully', { 
+          profileId: currentProfile._row_id,
+          updateResult: result 
         });
         
-        // Validate that the update actually happened
-        if (!updateResult || updateResult.length === 0) {
-          throw new Error('Update failed: No rows were affected. Please try again.');
-        }
-        
-        console.log('✅ profileService.updateProfile: Profile updated successfully', { updateResult });
-        result = updateResult;
       } else {
-        console.log('➕ profileService.updateProfile: Creating new profile');
-        // Create new profile - include all data for new profile
+        // INSERT new profile (user doesn't have one yet)
+        console.log('➕ profileService.updateProfile: UPSERT - INSERT new profile');
         const newProfileData = {
           ...data,
           _created_by: user.id,
@@ -968,45 +1018,46 @@ export const profileService = {
           _updated_at: Math.floor(Date.now() / 1000)
         };
         
+        console.log('📝 profileService.updateProfile: New profile data', { newProfileData });
+        
         result = await db.insert('player_profiles', newProfileData);
         console.log('✅ profileService.updateProfile: Profile created successfully', { result });
       }
 
-      // Verify the update by querying the profile again
-      console.log('🔍 profileService.updateProfile: Verifying update by querying profile');
+      // Verify the UPSERT by querying the profile again
+      console.log('🔍 profileService.updateProfile: Verifying UPSERT result');
       const { data: verificationProfile } = await db.query('player_profiles', {
         _created_by: 'eq.' + user.id
       });
 
       if (verificationProfile && verificationProfile.length === 1) {
         const profile = verificationProfile[0];
-        
-        console.log('✅ profileService.updateProfile: Verification complete (ONE PROFILE)', { 
+        console.log('✅ profileService.updateProfile: UPSERT verification successful', { 
           _row_id: profile._row_id,
+          _created_by: profile._created_by,
           username: profile.username,
           display_name: profile.display_name,
           avatar_url: profile.avatar_url,
           bio: profile.bio,
-          country: profile.country,
-          _updated_at: profile._updated_at,
-          updatedFields: Object.keys(profileData)
+          country: profile.country
         });
       } else {
-        console.log('⚠️ profileService.updateProfile: Profile verification issue', { 
+        console.log('⚠️ profileService.updateProfile: UPSERT verification failed', { 
           profileCount: verificationProfile?.length || 0 
         });
       }
 
       return result;
     } catch (error) {
-      console.error('❌ profileService.updateProfile: Failed to update player profile', error);
+      console.error('❌ profileService.updateProfile: UPSERT failed', error);
       
       // Enhanced error logging
-      if (error.message && error.message.includes('UNIQUE constraint failed: player_profiles.username')) {
+      if (error.message && error.message.includes('UNIQUE constraint failed')) {
         console.error('❌ profileService.updateProfile: UNIQUE constraint error details', {
           attemptedUsername: data.username,
           errorMessage: error.message
         });
+        throw new Error('Username already taken, please choose another one.');
       }
       
       handleApiError(error, 'Failed to update player profile');

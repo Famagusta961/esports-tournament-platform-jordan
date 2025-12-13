@@ -117,11 +117,11 @@ const Profile = () => {
   const handleProfileUpdate = async () => {
     console.log('🔄 Profile page: Handling profile update callback');
     try {
-      // Small delay to ensure database is updated
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Give database time to process the update
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Reload profile data after update (ONE profile per user)
-      console.log('🔍 Profile page: Reloading profile data');
+      console.log('🔍 Profile page: Reloading profile data after save');
       const playerProfile = await profileService.getProfile();
       console.log('📊 Profile page: Updated profile loaded', { 
         profile: playerProfile,
@@ -131,25 +131,37 @@ const Profile = () => {
         country: playerProfile?.country
       });
       
-      // Update state and verify the change
-      setProfile(playerProfile);
-      
-      // Additional verification
-      setTimeout(() => {
-        console.log('🔍 Profile page: Verifying profile state update', {
-          currentProfile: playerProfile,
-          displayName: playerProfile?.display_name,
-          hasAvatar: !!playerProfile?.avatar_url
+      if (playerProfile) {
+        // Update state and verify the change
+        console.log('📋 Profile page: Setting profile state with updated data');
+        setProfile(playerProfile);
+        
+        // Additional verification after state update
+        setTimeout(() => {
+          console.log('✅ Profile page: Profile state verification', {
+            displayName: playerProfile?.display_name,
+            username: playerProfile?.username,
+            hasAvatar: !!playerProfile?.avatar_url,
+            avatarUrl: playerProfile?.avatar_url,
+            country: playerProfile?.country
+          });
+        }, 200);
+        
+        console.log('✅ Profile page: Profile state updated successfully');
+        
+        // Show success confirmation
+        toast({
+          title: "Profile updated successfully",
+          description: "Your changes have been saved and are now visible.",
         });
-      }, 100);
-      
-      console.log('✅ Profile page: Profile state updated successfully');
-      
-      // Show success confirmation
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated and refreshed.",
-      });
+      } else {
+        console.log('⚠️ Profile page: No profile returned after update');
+        toast({
+          title: "Update completed",
+          description: "Profile saved, but refresh failed. Please reload the page.",
+          variant: "destructive",
+        });
+      }
       
     } catch (error) {
       console.error('❌ Profile page: Failed to reload profile after update:', error);
@@ -165,7 +177,10 @@ const Profile = () => {
   const handleDebugDatabase = async () => {
     try {
       console.log('🔍 DEBUG: Testing database connection and profile data');
-      const allProfiles = await debugProfileService.queryAllProfiles();
+      
+      // Comprehensive user vs profile mapping debug
+      const debugResult = await debugProfileService.debugUserVsProfileMapping();
+      console.log('🎯 DEBUG: Comprehensive result', { debugResult });
       
       const currentUser = await auth.getUser();
       if (currentUser) {
