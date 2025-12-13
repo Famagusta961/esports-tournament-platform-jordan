@@ -47,11 +47,13 @@ const Wallet = () => {
     const checkAuth = async () => {
       try {
         const currentUser = await auth.getUser();
+        console.log('Wallet: Auth check - currentUser:', currentUser);
         if (!currentUser) {
           console.log('Wallet: No user found, redirecting to login');
           navigate('/login');
           return;
         }
+        console.log('Wallet: User authenticated, setting user state');
         setUser(currentUser);
       } catch (error) {
         console.error('Wallet: Auth check failed', error);
@@ -64,31 +66,38 @@ const Wallet = () => {
 
   // Safe wallet data loading - DEPends ONLY on user.uuid
   useEffect(() => {
+    console.log('Wallet: Data effect triggered - user:', user, 'didLoadRef.current:', didLoadRef.current);
+    
     // Skip if no user UUID or already loaded
-    if (!user?.uuid || didLoadRef.current) {
-      if (user?.uuid && didLoadRef.current) {
-        setLoading(false);
-      }
+    if (!user?.uuid) {
+      console.log('Wallet: Skipping data load - no user UUID');
+      return;
+    }
+    
+    if (didLoadRef.current) {
+      console.log('Wallet: Skipping data load - already executed');
+      setLoading(false);
       return;
     }
 
-    console.log('Wallet: Loading data for user', user.uuid);
+    console.log('Wallet: Starting data load for user UUID:', user.uuid);
     
     const loadWalletData = async () => {
-      // Prevent double execution
+      // Prevent double execution - set flag immediately
       didLoadRef.current = true;
+      console.log('Wallet: didLoadRef set to true');
       
       try {
         // Load wallet balance
-        console.log('Wallet: Fetching balance...');
+        console.log('Wallet: Fetching balance for UUID:', user.uuid);
         const walletBalance = await walletService.getBalance();
         console.log('Wallet: Balance loaded:', walletBalance);
         setBalance(walletBalance?.balance || 0);
 
         // Load transactions
-        console.log('Wallet: Fetching transactions...');
+        console.log('Wallet: Fetching transactions for UUID:', user.uuid);
         const transactionHistory = await walletService.getTransactions();
-        console.log('Wallet: Transactions loaded:', transactionHistory?.length);
+        console.log('Wallet: Transactions loaded:', transactionHistory?.length, 'sample:', transactionHistory?.slice(0, 2));
         setTransactions(transactionHistory || []);
         
         console.log('Wallet: All data loaded successfully');
@@ -103,6 +112,7 @@ const Wallet = () => {
           });
         }
       } finally {
+        console.log('Wallet: Setting loading to false');
         setLoading(false);
       }
     };
