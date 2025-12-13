@@ -27,8 +27,6 @@ import AdminUsers from "./pages/admin/Users";
 import AdminWallet from "./pages/admin/Wallet";
 import AdminSettings from "./pages/admin/Settings";
 import GameImageManager from "./pages/admin/GameImageManager";
-// Import i18n configuration
-import './lib/i18n';
 
 const queryClient = new QueryClient();
 

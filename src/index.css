@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Orbitron:wght@400..900&family=Rajdhani:wght@300..700&family=Noto+Sans+Arabic:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Orbitron:wght@400..900&family=Rajdhani:wght@300..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -63,36 +63,16 @@
     font-family: 'Inter', sans-serif;
   }
 
-  /* Arabic font for RTL */
-  [dir="rtl"] body {
-    font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
-  }
-
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Orbitron', sans-serif;
-  }
-
-  /* Arabic headings for RTL */
-  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
-    font-family: 'Noto Sans Arabic', 'Orbitron', sans-serif;
   }
 
   .font-gaming {
     font-family: 'Rajdhani', sans-serif;
   }
 
-  /* Arabic gaming font for RTL */
-  [dir="rtl"] .font-gaming {
-    font-family: 'Noto Sans Arabic', 'Rajdhani', sans-serif;
-  }
-
   .font-display {
     font-family: 'Orbitron', sans-serif;
-  }
-
-  /* Arabic display font for RTL */
-  [dir="rtl"] .font-display {
-    font-family: 'Noto Sans Arabic', 'Orbitron', sans-serif;
   }
 }
 

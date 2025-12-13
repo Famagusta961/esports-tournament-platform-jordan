@@ -1,55 +1,43 @@
 import { UserPlus, Gamepad2, Trophy, Wallet } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+
+const steps = [
+  {
+    icon: UserPlus,
+    title: 'Create Account',
+    description: 'Sign up in seconds. Verify your phone and complete your gaming profile.',
+    color: 'from-primary to-cyan-400',
+  },
+  {
+    icon: Gamepad2,
+    title: 'Join Tournaments',
+    description: 'Browse tournaments for your favorite games. Pay entry fees and join the battle.',
+    color: 'from-purple-500 to-pink-500',
+  },
+  {
+    icon: Trophy,
+    title: 'Compete & Win',
+    description: 'Play matches, submit results, and climb the brackets to victory.',
+    color: 'from-yellow-500 to-orange-500',
+  },
+  {
+    icon: Wallet,
+    title: 'Get Paid',
+    description: 'Withdraw your winnings instantly to Zain Cash, Orange Money, or bank transfer.',
+    color: 'from-green-500 to-emerald-500',
+  },
+];
 
 const HowItWorks = () => {
-  const { t } = useTranslation();
-
-  const steps = [
-    {
-      icon: UserPlus,
-      title: t('home.howItWorks.step1.title'),
-      description: t('home.howItWorks.step1.description'),
-      color: 'from-primary to-cyan-400',
-    },
-    {
-      icon: Gamepad2,
-      title: t('home.howItWorks.step2.title'),
-      description: t('home.howItWorks.step2.description'),
-      color: 'from-purple-500 to-pink-500',
-    },
-    {
-      icon: Trophy,
-      title: t('home.howItWorks.step3.title'),
-      description: t('home.howItWorks.step3.description'),
-      color: 'from-yellow-500 to-orange-500',
-    },
-    {
-      icon: Wallet,
-      title: t('home.howItWorks.step4.title'),
-      description: t('home.howItWorks.step4.description'),
-      color: 'from-green-500 to-emerald-500',
-    },
-  ];
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">
-            {t('home.howItWorks.title').split('<span>').map((part: string, index: number) => {
-              if (part.includes('</span>')) {
-                return (
-                  <>
-                    {part.replace('</span>', '')}
-                    <span className="text-gradient">{part.replace('</span>', '')}</span>
-                  </>
-                );
-              }
-              return part;
-            })}
+            How It <span className="text-gradient">Works</span>
           </h2>
           <p className="text-muted-foreground font-gaming max-w-2xl mx-auto">
-            {t('home.howItWorks.description') || 'From registration to collecting your winnings - it\'s easier than you think'}
+            From registration to collecting your winnings - it's easier than you think
           </p>
         </div>
 

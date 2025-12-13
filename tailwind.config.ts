@@ -84,8 +84,7 @@ export default {
             fontFamily: {
                 display: ['Orbitron', 'sans-serif'],
                 gaming: ['Rajdhani', 'sans-serif'],
-                sans: ['Inter', 'sans-serif'],
-                arabic: ['Noto Sans Arabic', 'sans-serif']
+                sans: ['Inter', 'sans-serif']
             },
             borderRadius: {
                 lg: 'var(--radius)',
@@ -124,37 +123,5 @@ export default {
             }
         }
     },
-    plugins: [
-        require("tailwindcss-animate"),
-        // RTL plugin for proper RTL support
-        function({ addUtilities }: { addUtilities: any }) {
-            const newUtilities = {
-                '.rtl-flip': {
-                    transform: 'scaleX(-1)'
-                },
-                '.rtl\:text-right': {
-                    '@media [dir="rtl"]': { 'text-align': 'right' }
-                },
-                '.rtl\:text-left': {
-                    '@media [dir="rtl"]': { 'text-align': 'left' }
-                },
-                '.rtl\:mr-auto': {
-                    '@media [dir="rtl"]': { 'margin-right': 'auto' }
-                },
-                '.rtl\:ml-auto': {
-                    '@media [dir="rtl"]': { 'margin-left': 'auto' }
-                },
-                '.rtl\:ml-4': {
-                    '@media [dir="rtl"]': { 'margin-left': '1rem' }
-                },
-                '.rtl\:mr-4': {
-                    '@media [dir="rtl"]': { 'margin-right': '1rem' }
-                },
-                '.rtl\:rotate-180': {
-                    '@media [dir="rtl"]': { transform: 'rotate(180deg)' }
-                }
-            };
-            addUtilities(newUtilities);
-        }
-    ],
+    plugins: [require("tailwindcss-animate")],
 } satisfies Config;
