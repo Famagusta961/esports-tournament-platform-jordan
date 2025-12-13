@@ -174,7 +174,7 @@ const GameCategories = () => {
           {/* Games Horizontal Scroll */}
           <div
             ref={containerRef}
-            className="flex gap-6 overflow-x-auto scrollbar-hide py-2 px-2 snap-x snap-mandatory"
+            className="flex gap-8 overflow-x-auto scrollbar-hide py-2 px-2 snap-x snap-mandatory"
             style={{ 
               scrollbarWidth: 'none', 
               msOverflowStyle: 'none',
@@ -186,7 +186,7 @@ const GameCategories = () => {
               <div
                 key={game.id}
                 data-game-card
-                className="flex-none w-72 sm:w-56 animate-slide-up snap-center"
+                className="flex-none w-80 sm:w-64 animate-slide-up snap-center"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Link
@@ -197,9 +197,9 @@ const GameCategories = () => {
                   <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-10 group-hover:opacity-20 transition-opacity`} />
                   
                   {/* Content */}
-                  <div className="relative p-6 text-center">
+                  <div className="relative p-8 text-center">
                     {/* Game Image */}
-                    <div className="w-24 h-24 sm:w-24 sm:h-24 mx-auto mb-6 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
+                    <div className="w-28 h-28 sm:w-28 sm:h-28 mx-auto mb-8 rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-lg">
                       {game.image ? (
                         <img 
                           src={game.image} 
@@ -208,18 +208,18 @@ const GameCategories = () => {
                           style={{ width: '100%', height: '100%' }}
                         />
                       ) : (
-                        <ImageIcon className="w-10 h-10 sm:w-10 sm:h-10 text-muted-foreground" />
+                        <ImageIcon className="w-12 h-12 sm:w-12 sm:h-12 text-muted-foreground" />
                       )}
                     </div>
                     
                     {/* Game Name */}
-                    <h3 className="font-gaming font-semibold text-lg xl:text-xl mb-3 group-hover:text-primary transition-colors">
+                    <h3 className="font-gaming font-semibold text-xl xl:text-2xl mb-4 group-hover:text-primary transition-colors">
                       {game.name}
                     </h3>
                     
                     {/* Stats */}
-                    <div className="flex items-center justify-center space-x-2 text-base text-muted-foreground">
-                      <span className="px-4 py-2 rounded-full bg-primary/10 text-primary font-medium">
+                    <div className="flex items-center justify-center space-x-2 text-lg text-muted-foreground">
+                      <span className="px-5 py-2 rounded-full bg-primary/10 text-primary font-medium">
                         {game.activeTournaments} Active
                       </span>
                     </div>
