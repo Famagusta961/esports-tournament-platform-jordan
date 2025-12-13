@@ -1,8 +1,105 @@
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import auth from '@/lib/shared/kliv-auth.js';
+
+interface WalletBalance {
+  current_balance: number;
+  total_won: number;
+  pending_withdrawals: number;
+  total_withdrawn: number;
+}
 
 export default function Wallet() {
   console.count("Wallet render");
+  
+  const [loading, setLoading] = useState(true);
+  const [balance, setBalance] = useState<WalletBalance>({
+    current_balance: 0,
+    total_won: 0,
+    pending_withdrawals: 0,
+    total_withdrawn: 0
+  });
+
+  // Only fetch balance when user.uuid is available
+  useEffect(() => {
+    let aborted = false;
+    const didLoadRef = { current: false };
+
+    const fetchBalance = async () => {
+      try {
+        console.log(" WALLET: Starting balance fetch");
+        
+        const user = await auth.getUser();
+        console.log(" WALLET: Auth user:", user?.uuid ? 'found' : 'missing');
+        
+        if (!user?.uuid) {
+          console.log(" WALLET: No UUID - aborting balance fetch");
+          return;
+        }
+
+        if (didLoadRef.current) {
+          console.log(" WALLET: Already loading balance - skipping");
+          return;
+        }
+        didLoadRef.current = true;
+
+        const response = await fetch('/api/wallet/balance', {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log(" WALLET: Balance response status:", response.status);
+
+        if (!response.ok) {
+          throw new Error(`Balance fetch failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(" WALLET: Balance data:", data);
+
+        if (!aborted && data) {
+          setBalance({
+            current_balance: data.current_balance || 0,
+            total_won: data.total_won || 0,
+            pending_withdrawals: data.pending_withdrawals || 0,
+            total_withdrawn: data.total_withdrawn || 0
+          });
+        }
+      } catch (err) {
+        if (aborted) return;
+        console.error(" WALLET: Balance fetch error:", err);
+        // Don't show toast in C1 - keep it minimal
+      } finally {
+        if (!aborted) {
+          setLoading(false);
+          console.log(" WALLET: Balance fetch complete, loading=false");
+        }
+      }
+    };
+
+    // 10-second timeout wrapper
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Balance fetch timeout')), 10000);
+    });
+
+    (async () => {
+      try {
+        await Promise.race([fetchBalance(), timeoutPromise]);
+      } catch (err) {
+        if (!aborted) {
+          console.error(" WALLET: Balance fetch failed or timed out:", err);
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      aborted = true;
+      console.log(" WALLET: Balance effect cleanup");
+    };
+  }, []); // Dependency array is empty - effect runs once
   
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-6 lg:p-8">
@@ -18,7 +115,11 @@ export default function Wallet() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Current Balance</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">$0.00</p>
+              {loading ? (
+                <div className="h-8 w-32 bg-gray-200 animate-pulse rounded mt-1"></div>
+              ) : (
+                <p className="text-3xl font-bold text-gray-900 mt-1">${balance.current_balance.toFixed(2)}</p>
+              )}
             </div>
             <div className="text-green-600">
               <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -33,15 +134,27 @@ export default function Wallet() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="text-sm text-gray-600">Total Won</div>
-            <div className="text-2xl font-semibold text-gray-900">$0.00</div>
+            {loading ? (
+              <div className="h-7 w-24 bg-gray-200 animate-pulse rounded mt-1"></div>
+            ) : (
+              <div className="text-2xl font-semibold text-gray-900">${balance.total_won.toFixed(2)}</div>
+            )}
           </Card>
           <Card className="p-4">
             <div className="text-sm text-gray-600">Pending</div>
-            <div className="text-2xl font-semibold text-yellow-600">$0.00</div>
+            {loading ? (
+              <div className="h-7 w-24 bg-gray-200 animate-pulse rounded mt-1"></div>
+            ) : (
+              <div className="text-2xl font-semibold text-yellow-600">${balance.pending_withdrawals.toFixed(2)}</div>
+            )}
           </Card>
           <Card className="p-4">
             <div className="text-sm text-gray-600">Withdrawn</div>
-            <div className="text-2xl font-semibold text-gray-900">$0.00</div>
+            {loading ? (
+              <div className="h-7 w-24 bg-gray-200 animate-pulse rounded mt-1"></div>
+            ) : (
+              <div className="text-2xl font-semibold text-gray-900">${balance.total_withdrawn.toFixed(2)}</div>
+            )}
           </Card>
         </div>
 
